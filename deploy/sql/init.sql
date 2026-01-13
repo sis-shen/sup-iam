@@ -115,7 +115,6 @@ CREATE TABLE policies_audit (
                                 policyShadow LONGTEXT DEFAULT NULL COMMENT '策略 DSL 描述',
                                 extendShadow LONGTEXT DEFAULT NULL COMMENT '扩展字段',
                                 createdAt TIMESTAMP NOT NULL COMMENT '创建时间',
-                                updatedAt TIMESTAMP NOT NULL COMMENT '更新时间',
                                 PRIMARY KEY (id),
                                 KEY idx_policies_audit_instanceID (instanceID),
                                 KEY idx_policies_audit_username (username)
