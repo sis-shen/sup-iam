@@ -12,5 +12,4 @@ type PolicyAudit struct {
 	PolicyShadow *string
 	ExtendShadow *string
 	CreatedAt    time.Time
-	UpdatedAt    time.Time
 }
