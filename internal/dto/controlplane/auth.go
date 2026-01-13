@@ -29,7 +29,9 @@ type RegisterResponse struct {
 
 // ----------- Logout --------------------
 
-// nul
+type LogoutResponse struct {
+	Success bool `json:"success"`
+}
 
 // ---------- Me ----------
 
@@ -45,6 +47,13 @@ type RefreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token" binding:"required"`
 }
 
+type RefreshResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+	// ExpiresIn: access token validity duration in seconds
+	ExpiresIn int64 `json:"expires_in"`
+}
+
 // ---------- Password Reset ----------
 type PasswordResetRequest struct {
 	OldPassword string `json:"old_password" binding:"required"`
@@ -52,5 +61,5 @@ type PasswordResetRequest struct {
 }
 
 type PasswordResetResponse struct {
-	UserID string `json:"user_id"`
+	Success bool `json:"success"`
 }
