@@ -1,8 +1,8 @@
 package common
 
 type PageQuery struct {
-	Page     int `json:"page" example:"1"`
-	PageSize int `json:"page_size" example:"20"`
+	Page     int `form:"page" example:"1"`
+	PageSize int `form:"page_size" example:"20"`
 }
 
 type PageResponse struct {
