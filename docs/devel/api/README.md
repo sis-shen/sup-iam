@@ -77,50 +77,47 @@ Debug API 用于系统运维、问题排查与鉴权链路调试，不属于正�
 | DELETE | /users/{id} | 删除指定User         |
 
 +   Secrets对象管理接口（含AK/Sk)
+`
+| 方法     | 路径                  | 描述                    |
+|--------|---------------------|-----------------------|
+| GET    | /secrets            | 获取Secret列表            |
+| POST   | /secrets            | 创建一个Secret            |
+| GET    | /secrets/{id}       | 获取指定Secret            |
+| PUT    | /secrets/{id}       | 更新指定Secret            |
+| DELETE | /secrets/{id}       | 删除指定Secret            |
+| PUT    | /secrets/{id}/rotate | 轮换指定Secret            |
+| GET    | /secrets/policies?secret_id= | 获取指定Secret的绑定Policy列表 |
 
-| 方法     | 路径                     | 描述                    |
-|--------|------------------------|-----------------------|
-| GET    | /secrets               | 获取Secret列表            |
-| POST   | /secrets               | 创建一个Secret            |
-| GET    | /secrets/{id}          | 获取指定Secret            |
-| PUT    | /secrets/{id}          | 更新指定Secret            |
-| DELETE | /secrets/{id}          | 删除指定Secret            |
-| PUT    | /secrets/{id}/rotate   | 轮换指定Secret            |
-| PUT    | /secrets/{id}/enable   | 启用指定的Access Key       |
-| PUT    | /secrets/{id}/disable  | 禁用指定的Access Key       |
-| GET    | /secrets?user={id}     | 获取指定Secret列表          |
-| GET    | /secrets/{id}/policies | 获取指定Secret的绑定Policy列表 |
-
-
+`
 +  权限策略（Policy）管理接口
 
-| 方法     | 路径                     | 描述                    |
-|--------|------------------------|-----------------------|
-| GET    | /policies              | 获取Policy列表            |
-| POST   | /policies              | 创建一个Policy            |
-| GET    | /policies/{id}         | 获取指定Policy            |
-| PUT    | /policies/{id}         | 更新指定Policy            |
-| DELETE | /policies/{id}         | 删除指定Policy            |
-| GET    | /policies?user={id}    | 获取指定Policy列表          |
-| GET    | /policies/{id}/secrets | 获取指定Policy的绑定Secret列表 |
+| 方法     | 路径                           | 描述                    |
+|--------|------------------------------|-----------------------|
+| GET    | /policies                    | 获取Policy列表            |
+| POST   | /policies                    | 创建一个Policy            |
+| GET    | /policies/{id}               | 获取指定Policy            |
+| PUT    | /policies/{id}               | 更新指定Policy            |
+| DELETE | /policies/{id}               | 删除指定Policy            |
+| GET    | /policies/secrets?policy_id= | 获取指定Policy的绑定Secret列表 |
 
 + 绑定关系接口列表
 
-| 方法     | 路径                      | 描述           |
-|--------|-------------------------|--------------|
-| GET    | /bindings               | 获取Binding列表  |
-| POST   | /bindings               | 创建一个Binding  |
-| GET    | /bindings/{id}          | 获取指定Binding   |
-| PUT    | /bindings/{id}          | 更新指定Binding   |
-| DELETE | /bindings/{id}          | 删除指定Binding  |
-| GET    | /bindings?user={id}     | 获取指定 用户的 Binding 列表 |
+| 方法     | 路径                     | 描述           |
+|--------|------------------------|--------------|
+| GET    | /bindings              | 获取Binding列表  |
+| POST   | /bindings              | 创建一个Binding  |
+| GET    | /bindings/{id}         | 获取指定Binding   |
+| DELETE | /bindings/{id}         | 删除指定Binding  |
+| GET    | /bindings?user_id={id} | 获取指定 用户的 Binding 列表 |
 
 +  审计与历史记录查询接口（只读）
 
-| 方法     | 路径              | 描述            |
-|--------|-----------------|---------------|
-| GET    | /audits/policies | 获取Policy审计列表  |
-| GET    | /audits/bindings | 获取Binding审计列表 |
+| 方法     | 路径                    | 描述            |
+|--------|-----------------------|---------------|
+| GET    | /audits/policies/{id} | 获取指定Policy审计  |
+| GET    | /audits/policies      | 获取Policy审计列表  |
+| GET    | /audits/bindings/{id} | 获取指定Binding审计 |
+| GET    | /audits/bindings      | 获取Binding审计列表 |
 
 ---
 
