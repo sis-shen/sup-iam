@@ -6,5 +6,7 @@ type PageQuery struct {
 }
 
 type PageResponse struct {
-	Total int `json:"total" example:"100"`
+	Total    int `json:"total" example:"100"`
+	Page     int `json:"page" example:"1"`
+	PageSize int `json:"page_size" example:"20"`
 }
