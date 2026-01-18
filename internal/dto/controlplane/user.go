@@ -31,7 +31,7 @@ type UpdateUserRequest struct {
 type GetUserPath struct {
 	ID string `uri:"id" binding:"required"`
 }
-type UserResponse struct {
+type GetUserResponse struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
 	Email    string `json:"email"`
@@ -49,7 +49,7 @@ type UserListQuery struct {
 
 type UserListResponse struct {
 	common.PageResponse
-	Items []UserResponse `json:"items"`
+	Items []GetUserResponse `json:"items"`
 }
 
 // --------- Delete User ---------

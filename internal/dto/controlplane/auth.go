@@ -3,7 +3,9 @@ package controlplane
 // ---------- Login ----------
 
 type LoginRequest struct {
-	Username string `json:"username" binding:"required"`
+	Username string `json:"username,omitempty" binding:"required"`
+	Phone    string `json:"phone,omitempty" binding:"required"`
+	Email    string `json:"email,omitempty" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 
@@ -18,8 +20,8 @@ type LoginResponse struct {
 type RegisterRequest struct {
 	Username string `json:"username" binding:"required"`
 	Password string `json:"password" binding:"required"`
-	Email    string `json:"email"`
-	Phone    string `json:"phone"`
+	Email    string `json:"email,omitempty"`
+	Phone    string `json:"phone,omitempty"`
 }
 
 type RegisterResponse struct {
