@@ -57,14 +57,14 @@ Debug API 用于系统运维、问题排查与鉴权链路调试，不属于正�
 ### 2.1 auth认证系列
 + 控制面用户认证、登录态管理相关接口
 
-| 方法    | 路径                    | 描述             |
-|-------|-----------------------|----------------|
-| POST  | /auth/login           | 登陆iam用户        |
-| POST  | /auth/register        | 注册iam用户,用于自助注册 |
-| POST  | /auth/logout          | 退出登录状态         |
-| GET   | /auth/me              | 获取当前用户信息       |
-| POST  | /auth/refresh         | Token刷新        |
-| POST  | /auth/password/change | 密码修改           | 
+| 方法   | 路径                   | 描述             |
+|------|----------------------|----------------|
+| POST | /auth/login          | 登陆iam用户        |
+| POST | /auth/register       | 注册iam用户,用于自助注册 |
+| POST | /auth/logout         | 退出登录状态         |
+| GET  | /auth/me             | 获取当前用户信息       |
+| POST | /auth/refresh        | Token刷新        |
+| PUT  | /auth/password       | 密码修改           | 
 
 +  IAM 控制面用户管理接口
 
@@ -86,19 +86,19 @@ Debug API 用于系统运维、问题排查与鉴权链路调试，不属于正�
 | PUT    | /secrets/{id}       | 更新指定Secret            |
 | DELETE | /secrets/{id}       | 删除指定Secret            |
 | PUT    | /secrets/{id}/rotate | 轮换指定Secret            |
-| GET    | /secrets/policies?secret_id= | 获取指定Secret的绑定Policy列表 |
+| GET    | /secrets/{id}/policies | 获取指定Secret的绑定Policy列表 |
 
 `
 +  权限策略（Policy）管理接口
 
-| 方法     | 路径                           | 描述                    |
-|--------|------------------------------|-----------------------|
-| GET    | /policies                    | 获取Policy列表            |
-| POST   | /policies                    | 创建一个Policy            |
-| GET    | /policies/{id}               | 获取指定Policy            |
-| PUT    | /policies/{id}               | 更新指定Policy            |
-| DELETE | /policies/{id}               | 删除指定Policy            |
-| GET    | /policies/secrets?policy_id= | 获取指定Policy的绑定Secret列表 |
+| 方法     | 路径                     | 描述                    |
+|--------|------------------------|-----------------------|
+| GET    | /policies              | 获取Policy列表            |
+| POST   | /policies              | 创建一个Policy            |
+| GET    | /policies/{id}         | 获取指定Policy            |
+| PUT    | /policies/{id}         | 更新指定Policy            |
+| DELETE | /policies/{id}         | 删除指定Policy            |
+| GET    | /policies/{id}/secrets | 获取指定Policy的绑定Secret列表 |
 
 + 绑定关系接口列表
 
