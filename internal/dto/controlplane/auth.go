@@ -56,12 +56,8 @@ type RefreshResponse struct {
 	ExpiresIn int64 `json:"expires_in"`
 }
 
-// ---------- Password Reset ----------
-type PasswordResetRequest struct {
+// ---------- Change Password ----------
+type ChangePasswordRequest struct {
 	OldPassword string `json:"old_password" binding:"required"`
 	NewPassword string `json:"new_password" binding:"required"`
-}
-
-type PasswordResetResponse struct {
-	Success bool `json:"success"`
 }
