@@ -10,7 +10,7 @@ func main() {
 	cmd := exec.Command(
 		"swag", "init",
 		"-g", "cmd/swagger/main.go",
-		"-o", "docs",
+		"-o", "docs/api",
 		"--parseDependency",
 		"--parseInternal",
 	)
