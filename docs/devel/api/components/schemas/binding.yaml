@@ -1,0 +1,75 @@
+# api/components/schemas/binding.yaml
+
+components:
+  schemas:
+    SecretPolicyBinding:
+      type: object
+      description: Secret与Policy的绑定关系
+      x-go-type: "model.SecretPolicyBinding"
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 8001
+          readOnly: true
+        secret_id:
+          type: integer
+          format: int64
+          example: 1001
+        policy_id:
+          type: integer
+          format: int64
+          example: 5001
+        username:
+          type: string
+          example: "alice"
+        extend_shadow:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2024-01-01T00:00:00Z"
+
+
+    CreateBindingRequest:
+      type: object
+      required: [secret_id, policy_id]
+      properties:
+        secret_id:
+          $ref: '#/components/schemas/SecretPolicyBinding/properties/secret_id'
+        policy_id:
+          $ref: '#/components/schemas/SecretPolicyBinding/properties/policy_id'
+        extend_shadow:
+          type: object
+          nullable: true
+          additionalProperties: true
+
+    # ========== 响应模型 ==========
+
+    # 绑定关系详情响应
+    BindingResponse:
+      type: object
+      properties:
+        binding_id:
+          $ref: '#/components/schemas/SecretPolicyBinding/properties/id'
+        secret_id:
+          $ref: '#/components/schemas/SecretPolicyBinding/properties/secret_id'
+        policy_id:
+          $ref: '#/components/schemas/SecretPolicyBinding/properties/policy_id'
+        username:
+          $ref: '#/components/schemas/SecretPolicyBinding/properties/username'
+        created_at:
+          $ref: '#/components/schemas/SecretPolicyBinding/properties/created_at'
+
+    # 绑定列表响应（使用通用PageResponse模板）
+    BindingListResponse:
+      allOf:
+        - $ref: '../common.yaml#/components/schemas/PageResponse'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/BindingResponse'

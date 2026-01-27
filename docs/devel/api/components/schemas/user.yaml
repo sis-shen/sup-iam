@@ -1,0 +1,148 @@
+# api/components/schemas/user.yaml
+
+components:
+  schemas:
+    # 用户核心模型
+    User:
+      type: object
+      x-go-model-import: "github.com/sis-shen/sup-iam/internal/model"
+      x-go-type: "model.User"
+      description: IAM控制面用户实体
+      required: [username, is_enable, is_admin]
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 123456
+          readOnly: true
+          description: 用户唯一ID
+        instance_id:
+          type: string
+          pattern: '^[a-zA-Z0-9-_]{1,64}$'
+          example: "iam-prod-01"
+          description: 实例标识，用于多租户隔离
+        username:
+          type: string
+          pattern: '^[a-z0-9_]{3,32}$'
+          example: "alice"
+          description: 用户名，全小写字母、数字、下划线，3-32字符
+        nickname:
+          type: string
+          minLength: 1
+          maxLength: 64
+          example: "Alice Smith"
+          description: 显示名称
+        is_enable:
+          type: integer
+          format: int32
+          enum: [0, 1]
+          description: 用户状态枚举
+          enumDescriptions:
+            0: 禁用
+            1: 启用
+        phone:
+          type: string
+          pattern: '^\+?[1-9]\d{1,14}$'
+          example: "+8613812345678"
+          nullable: true
+          description: 手机号，E.164格式
+        email:
+          type: string
+          format: email
+          example: "alice@example.com"
+          nullable: true
+          description: 邮箱地址
+        is_admin:
+          type: integer
+          format: int32
+          enum: [ 0, 1 ]
+          description: 管理员标识枚举
+          enumDescriptions:
+            0: 普通用户
+            1: 管理员
+        extend_shadow:
+          type: string
+          nullable: true
+          x-go-custom-tag: gorm:"serializer:json"
+          description: 扩展字段影子，JSON格式存储扩展属性
+        logged_at:
+          type: string
+          format: date-time
+          nullable: true
+          readOnly: true
+          example: "2024-01-20T10:30:00Z"
+          description: 最后登录时间
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2024-01-01T00:00:00Z"
+          description: 创建时间
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2024-01-20T15:45:00Z"
+          description: 更新时间
+
+
+    # 创建用户请求
+    CreateUserRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username:
+          $ref: '#/components/schemas/User/properties/username'
+        nickname:
+          $ref: '#/components/schemas/User/properties/nickname'
+        password:
+          type: string
+          format: password
+          minLength: 8
+          maxLength: 64
+          writeOnly: true
+          description: 密码，8-64字符
+        phone:
+          $ref: '#/components/schemas/User/properties/phone'
+        email:
+          $ref: '#/components/schemas/User/properties/email'
+        is_enable:
+          $ref: '#/components/schemas/User/properties/is_enable'
+        is_admin:
+          $ref: '#/components/schemas/User/properties/is_admin'
+
+    # 更新用户请求
+    UpdateUserRequest:
+      type: object
+      properties:
+        nickname:
+          $ref: '#/components/schemas/User/properties/nickname'
+        phone:
+          $ref: '#/components/schemas/User/properties/phone'
+        email:
+          $ref: '#/components/schemas/User/properties/email'
+        is_enable:
+          $ref: '#/components/schemas/User/properties/is_enable'
+        is_admin:
+          $ref: '#/components/schemas/User/properties/is_admin'
+        password:
+          type: string
+          format: password
+          writeOnly: true
+          nullable: true
+          description: 新密码（留空表示不修改）
+        extend_shadow:
+          type: object
+          nullable: true
+          additionalProperties: true
+          description: 扩展字段，JSON对象格式
+
+    UserListResponse:
+      allOf:
+        - $ref: '../common.yaml#/components/schemas/PageResponse'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/User'

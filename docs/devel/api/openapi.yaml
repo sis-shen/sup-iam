@@ -1,0 +1,37 @@
+openapi: 3.0.3
+info:
+  title: IAM API
+  description: 身份与访问管理系统API
+  version: 1.0.0
+  contact: {name: supdriver, email: github.com/sis-shen/sup-iam}
+
+servers:
+  - url: https://127.0.0.1:8888
+    description: 生产环境
+  - url: https://127.0.0.1:8888
+    description: 测试环境
+
+paths: {
+
+}  # 留空，由$ref引用具体接口
+
+components:
+  $ref: "./components/schemas.yaml#/components"
+
+tags:  # 全局标签定义
+  - name: Authentication
+    description: 用户认证与登录
+  - name: Users
+    description: IAM用户管理
+  - name: Secrets
+    description: AccessKey/SecretKey管理
+  - name: Policies
+    description: 权限策略管理
+  - name: Bindings
+    description: 策略绑定关系
+  - name: Audits
+    description: 审计日志查询
+  - name: DataPlane
+    description: 数据面鉴权
+  - name: Debug
+    description: 调试与诊断接口

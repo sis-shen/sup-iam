@@ -1,0 +1,141 @@
+# api/components/schemas/policy.yaml
+
+components:
+  schemas:
+    Policy:
+      type: object
+      description: 权限策略
+      x-go-type: "model.Policy"
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 5001
+          readOnly: true
+        instance_id:
+          type: string
+          example: "iam-prod-01"
+        name:
+          type: string
+          example: "ReadOnlyAccess"
+        username:
+          type: string
+          example: "alice"
+        description:
+          type: string
+          nullable: true
+          example: "只读访问权限"
+        policy_shadow:
+          type: string
+          nullable: true
+          description: "策略内容影子（JSON格式的策略定义）"
+        extend_shadow:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2024-01-01T00:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2024-01-20T15:45:00Z"
+
+
+    CreatePolicyRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          $ref: '#/components/schemas/Policy/properties/name'
+        description:
+          $ref: '#/components/schemas/Policy/properties/description'
+        # 根据DTO，content对应policy_shadow
+        content:
+          type: string
+          description: "策略内容（JSON格式）"
+        extend_shadow:
+          type: object
+          nullable: true
+          additionalProperties: true
+
+    UpdatePolicyRequest:
+      type: object
+      properties:
+        name:
+          $ref: '#/components/schemas/Policy/properties/name'
+        description:
+          $ref: '#/components/schemas/Policy/properties/description'
+        content:
+          type: string
+          nullable: true
+          description: "策略内容（JSON格式）"
+        extend_shadow:
+          type: object
+          nullable: true
+          additionalProperties: true
+
+    # ========== 响应模型 ==========
+
+    # 安全响应（不含shadow字段）
+    PolicyResponse:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/Policy/properties/id'
+        instance_id:
+          $ref: '#/components/schemas/Policy/properties/instance_id'
+        name:
+          $ref: '#/components/schemas/Policy/properties/name'
+        username:
+          $ref: '#/components/schemas/Policy/properties/username'
+        description:
+          $ref: '#/components/schemas/Policy/properties/description'
+        created_at:
+          $ref: '#/components/schemas/Policy/properties/created_at'
+        updated_at:
+          $ref: '#/components/schemas/Policy/properties/updated_at'
+        # DTO中的content字段，对应policy_shadow
+        content:
+          type: string
+          description: "策略内容（JSON格式）"
+
+    # 策略列表响应
+    PolicyListResponse:
+      allOf:
+        # 分页信息
+        - $ref: '../common.yaml#/components/schemas/PageResponse'
+        # 数据部分
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/PolicyResponse'
+
+    # 删除响应
+    DeletePolicyResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+
+    # 策略绑定的Secret列表响应
+    PolicyBindingListResponse:
+      allOf:
+        # 分页信息
+        - $ref: '../common.yaml#/components/schemas/PageResponse'
+        # 数据部分
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '../secret.yaml#/components/schemas/SecretResponse'
+            policy_id:
+              type: integer
+              format: int64
+              example: 5001

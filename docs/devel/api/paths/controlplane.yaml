@@ -1,0 +1,849 @@
+/api/v1/auth/login:
+  post:
+    tags:
+      - auth
+    summary: 用户登录
+    description: 用户输入用户名 / 邮箱 / 手机号和密码登录
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/auth.yaml#/LoginRequest"
+    responses:
+      "200":
+        description: 登录成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/auth.yaml#/LoginResponse"
+      "401":
+        description: 登录认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/auth/register:
+  post:
+    tags:
+      - auth
+    summary: 用户注册
+    description: 用户输入用户名、邮箱（可选）、手机号（可选）和密码注册
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/auth.yaml#/RegisterRequest"
+    responses:
+      "200":
+        description: 注册成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/auth.yaml#/RegisterResponse"
+      "400":
+        description: 参数非法
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+      "409":
+        description: 用户已存在
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/auth/logout:
+  post:
+    tags:
+      - auth
+    summary: 用户退出登录
+    description: 用户从登录状态退出
+    responses:
+      "200":
+        description: 退出成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/auth.yaml#/LogoutResponse"
+      "401":
+        description: 用户未登录
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/auth/me:
+  get:
+    tags:
+      - auth
+    summary: 获取用户信息
+    description: 利用 Token 获取用户信息
+    responses:
+      "200":
+        description: 获取成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/auth.yaml#/MeResponse"
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/auth/refresh:
+  post:
+    tags:
+      - auth
+    summary: 刷新 Token
+    description: 用户使用 Refresh Token 刷新 Access Token
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/auth.yaml#/RefreshTokenRequest"
+    responses:
+      "200":
+        description: 刷新成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/auth.yaml#/RefreshResponse"
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/auth/password/change:
+  post:
+    tags:
+      - auth
+    summary: 修改密码
+    description: 用户上传新的密码修改登录密码
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/auth.yaml#/ChangePasswordRequest"
+    responses:
+      "200":
+        description: 修改成功
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/audits/policies/{id}:
+  get:
+    tags:
+      - audit
+    summary: 获取 Policy Audit
+    description: 获取指定 ID 的 Policy Audit
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: 获取成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/audit.yaml#/GetPolicyAuditResponse"
+      "401":
+        description: 没有 admin 权限
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/audits/policies:
+  get:
+    tags:
+      - audit
+    summary: 获取 Policy Audit 列表
+    description: |
+      获取 Policy Audit 列表  
+      支持按 PolicyID / UserID 过滤
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+      - name: policy_id
+        in: query
+        schema:
+          type: string
+      - name: user_id
+        in: query
+        schema:
+          type: string
+    responses:
+      "200":
+        description: 获取成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/audit.yaml#/GetPolicyAuditListResponse"
+      "401":
+        description: 没有 admin 权限
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/audits/bindings/{id}:
+  get:
+    tags:
+      - audit
+    summary: 获取 Binding Audit
+    description: 获取指定 ID 的 Binding Audit
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: 获取成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/audit.yaml#/GetBindingAuditResponse"
+      "401":
+        description: 没有 admin 权限
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/audits/bindings:
+  get:
+    tags:
+      - audit
+    summary: 获取 Binding Audit 列表
+    description: |
+      获取 Binding Audit 列表  
+      支持按 SecretID / PolicyID / UserID 过滤
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+      - name: secret_id
+        in: query
+        schema:
+          type: string
+      - name: policy_id
+        in: query
+        schema:
+          type: string
+      - name: user_id
+        in: query
+        schema:
+          type: string
+    responses:
+      "200":
+        description: 获取成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/audit.yaml#/GetBindingAuditListResponse"
+      "401":
+        description: 没有 admin 权限
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/bindings/{id}:
+  get:
+    tags:
+      - binding
+    summary: 获取指定 Binding 信息
+    description: 根据 ID 获取指定 Binding 信息
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: 获取成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/binding.yaml#/GetBindingResponse"
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+  delete:
+    tags:
+      - binding
+    summary: 删除 Binding
+    description: 删除指定 Binding
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: 删除成功
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/bindings:
+  get:
+    tags:
+      - binding
+    summary: 获取 Binding 列表
+    description: 获取指定用户的 Binding 列表
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+      - name: user_id
+        in: query
+        schema:
+          type: string
+    responses:
+      "200":
+        description: 获取成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/binding.yaml#/GetBindingListResponse"
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+  post:
+    tags:
+      - binding
+    summary: 创建 Binding
+    description: 创建 Secret 与 Policy 的绑定关系
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/binding.yaml#/CreateBindingRequest"
+    responses:
+      "200":
+        description: 创建成功
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/policies/{id}:
+  get:
+    tags:
+      - policy
+    summary: 获取指定 Policy 信息
+    description: 根据 ID 获取指定 Policy 信息
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: 获取成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/policy.yaml#/GetPolicyResponse"
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+      "404":
+        description: Policy 不存在
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+  put:
+    tags:
+      - policy
+    summary: 更新 Policy
+    description: 更新 Policy 的名称、描述和内容
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/policy.yaml#/UpdatePolicyRequest"
+    responses:
+      "200":
+        description: 更新成功
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+  delete:
+    tags:
+      - policy
+    summary: 删除 Policy
+    description: 删除指定 ID 的 Policy
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: 删除成功
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/policies:
+  get:
+    tags:
+      - policy
+    summary: 获取 Policy 列表
+    description: 获取指定用户的 Policy 列表
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+    responses:
+      "200":
+        description: 获取成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/policy.yaml#/GetPolicyListResponse"
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+  post:
+    tags:
+      - policy
+    summary: 创建 Policy
+    description: 根据传入参数创建 Policy
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/policy.yaml#/CreatePolicyRequest"
+    responses:
+      "200":
+        description: 创建成功
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/policies/{id}/secrets:
+  get:
+    tags:
+      - policy
+    summary: 获取 Policy 绑定的 Secret 列表
+    description: 获取指定 Policy 绑定的 Secret 列表
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+    responses:
+      "200":
+        description: 获取成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/policy.yaml#/GetPolicyBindingListResponse"
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/secrets/{id}:
+  get:
+    tags:
+      - secret
+    summary: 获取指定 Secret 信息
+    description: 获取指定 Secret ID 的信息
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: 获取成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/secret.yaml#/GetSecretResponse"
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+  put:
+    tags:
+      - secret
+    summary: 更新 Secret
+    description: 根据 ID 更新 Secret
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/secret.yaml#/UpdateSecretRequest"
+    responses:
+      "200":
+        description: 更新成功
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+  delete:
+    tags:
+      - secret
+    summary: 删除 Secret
+    description: 根据 ID 删除 Secret
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: 删除成功
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/secrets:
+  get:
+    tags:
+      - secret
+    summary: 获取 Secret 列表
+    description: 获取指定用户的 Secret 列表（用户由 Token 确定）
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+    responses:
+      "200":
+        description: 获取成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/secret.yaml#/GetSecretListResponse"
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+  post:
+    tags:
+      - secret
+    summary: 创建 Secret
+    description: 为指定用户创建 Secret
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/secret.yaml#/CreateSecretRequest"
+    responses:
+      "200":
+        description: 创建成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/secret.yaml#/CreateSecretResponse"
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/secrets/{id}/rotate:
+  put:
+    tags:
+      - secret
+    summary: 轮换 Secret
+    description: 轮换指定 Secret 的 SK，并刷新存活时间
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: 轮换成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/secret.yaml#/RotateSecretResponse"
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/secrets/{id}/policies:
+  get:
+    tags:
+      - secret
+    summary: 获取 Secret 绑定的 Policy 列表
+    description: 获取指定 Secret 绑定的 Policy 列表
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+    responses:
+      "200":
+        description: 获取成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/secret.yaml#/GetSecretBindingPolicyListResponse"
+      "401":
+        description: Token 认证失败
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+/api/v1/users:
+  get:
+    tags:
+      - user
+    summary: 获取用户列表
+    description: 按页查询用户列表
+    parameters:
+      - name: page
+        in: query
+        schema:
+          type: integer
+      - name: page_size
+        in: query
+        schema:
+          type: integer
+    responses:
+      "200":
+        description: 获取成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/user.yaml#/UserListResponse"
+      "403":
+        description: 没有 admin 权限
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+  post:
+    tags:
+      - user
+    summary: 创建用户
+    description: 管理员调用接口直接创建用户
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/user.yaml#/CreateUserRequest"
+    responses:
+      "200":
+        description: 创建成功
+      "403":
+        description: 没有 admin 权限
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+/api/v1/users/{id}:
+  get:
+    tags:
+      - user
+    summary: 获取指定用户信息
+    description: 获取指定用户 id 的信息
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: 获取成功
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/user.yaml#/GetUserResponse"
+      "403":
+        description: 没有 admin 权限
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+      "404":
+        description: 用户不存在
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+  put:
+    tags:
+      - user
+    summary: 更新用户字段
+    description: 更新用户的昵称、手机号、邮箱、管理员权限、是否启用等字段
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "../schemas/user.yaml#/UpdateUserRequest"
+    responses:
+      "200":
+        description: 更新成功
+      "403":
+        description: 没有 admin 权限
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+
+  delete:
+    tags:
+      - user
+    summary: 删除用户
+    description: 删除指定 id 的用户
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+    responses:
+      "200":
+        description: 删除成功
+      "403":
+        description: 没有 admin 权限
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"
+      "404":
+        description: 用户不存在
+        content:
+          application/json:
+            schema:
+              $ref: "../schemas/common.yaml#/ErrorResponse"

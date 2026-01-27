@@ -1,0 +1,57 @@
+# api/components/common.yaml
+
+components:
+  schemas:
+    # 错误响应 - 实际API会用到的
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "invalid_request"
+        error_description:
+          type: string
+          example: "用户名已存在"
+
+    # ID路径参数 - 通用模式
+    IDPathParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    # 通用分页响应模板
+    PageResponse:
+      type: object
+      properties:
+        items:
+          type: array
+        page:
+          type: integer
+          format: int32
+        page_size:
+          type: integer
+          format: int32
+        total:
+          type: integer
+          format: int64
+
+  parameters:
+    # 分页参数 - 很多接口都会用
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+
+    PageSizeParam:
+      name: page_size
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
