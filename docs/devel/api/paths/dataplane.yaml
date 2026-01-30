@@ -1,0 +1,35 @@
+# data-plane/auth.yaml
+
+paths:
+  /auth/v1/verify:
+    post:
+      tags:
+        - auth-verify
+      summary: 鉴权验证
+      description: 数据面请求签名校验与权限判定
+      operationId: verifyRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "../components/schemas/verify.yaml#/components/schemas/VerifyRequest"
+      responses:
+        "200":
+          description: 鉴权成功
+          content:
+            application/json:
+              schema:
+                $ref: "../components/schemas/verify.yaml#/components/schemas/VerifyResponse"
+        "401":
+          description: 鉴权失败
+          content:
+            application/json:
+              schema:
+                $ref: "../components/common.yaml#/components/schemas/ErrorResponse"
+        "403":
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: "../components/common.yaml#/components/schemas/ErrorResponse"

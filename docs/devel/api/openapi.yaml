@@ -3,22 +3,96 @@ info:
   title: IAM API
   description: 身份与访问管理系统API
   version: 1.0.0
-  contact: {name: supdriver, email: github.com/sis-shen/sup-iam}
+  contact:
+    name: supdriver
+    email: github.com/sis-shen/sup-iam
 
 servers:
   - url: https://127.0.0.1:8888
     description: 生产环境
-  - url: https://127.0.0.1:8888
-    description: 测试环境
+  - url: http://127.0.0.1:8888
+    description: 开发环境
 
-paths: {
+# 导入所有接口路径
+paths:
+  $ref: "./paths/controlplane.yaml#/paths"
+  $ref: "./paths/dataplane.yaml#/paths"
+  # # ========== 控制面API ==========
+  # /api/v1/auth/login:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1auth~1login"
 
-}  # 留空，由$ref引用具体接口
+  # /api/v1/auth/register:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1auth~1register"
 
+  # /api/v1/auth/logout:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1auth~1logout"
+
+  # /api/v1/auth/me:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1auth~1me"
+
+  # /api/v1/auth/refresh:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1auth~1refresh"
+
+  # /api/v1/auth/password/change:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1auth~1password~1change"
+
+  # /api/v1/users:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1users"
+
+  # /api/v1/users/{id}:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1users~1{id}"
+
+  # /api/v1/secrets:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1secrets"
+
+  # /api/v1/secrets/{id}:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1secrets~1{id}"
+
+  # /api/v1/secrets/{id}/rotate:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1secrets~1{id}~1rotate"
+
+  # /api/v1/secrets/{id}/policies:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1secrets~1{id}~1policies"
+
+  # /api/v1/policies:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1policies"
+
+  # /api/v1/policies/{id}:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1policies~1{id}"
+
+  # /api/v1/policies/{id}/secrets:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1policies~1{id}~1secrets"
+
+  # /api/v1/bindings:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1bindings"
+
+  # /api/v1/bindings/{id}:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1bindings~1{id}"
+
+  # /api/v1/audits/policies:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1audits~1policies"
+
+  # /api/v1/audits/policies/{id}:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1audits~1policies~1{id}"
+
+  # /api/v1/audits/bindings:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1audits~1bindings"
+
+  # /api/v1/audits/bindings/{id}:
+  #   $ref: "./paths/controlplane.yaml#/~1api~1v1~1audits~1bindings~1{id}"
+
+  # # ========== 数据面API ==========
+  # /auth/v1/verify:
+  #   $ref: "./paths/dataplane.yaml#/~1auth~1v1~1verify"
+
+# 导入组件定义
 components:
-  $ref: "./components/schemas.yaml#/components"
+  schemas:
+    $ref: "./components/common.yaml#/components/schemas"
+  parameters:
+    $ref: "./components/common.yaml#/components/parameters"
 
-tags:  # 全局标签定义
+tags:
   - name: Authentication
     description: 用户认证与登录
   - name: Users

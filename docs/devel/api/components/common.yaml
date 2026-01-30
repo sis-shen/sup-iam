@@ -13,14 +13,7 @@ components:
           type: string
           example: "用户名已存在"
 
-    # ID路径参数 - 通用模式
-    IDPathParam:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: integer
-        format: int64
+
     # 通用分页响应模板
     PageResponse:
       type: object
@@ -38,6 +31,14 @@ components:
           format: int64
 
   parameters:
+    # ID路径参数 - 通用模式
+    IDPathParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
     # 分页参数 - 很多接口都会用
     PageParam:
       name: page

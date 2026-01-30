@@ -184,10 +184,6 @@ components:
           type: string
           description: "新的访问令牌"
           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-        refresh_token:
-          type: string
-          description: "新的刷新令牌"
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
         expires_in:
           type: integer
           format: int64

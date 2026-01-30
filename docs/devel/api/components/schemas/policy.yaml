@@ -115,14 +115,6 @@ components:
               items:
                 $ref: '#/components/schemas/PolicyResponse'
 
-    # 删除响应
-    DeletePolicyResponse:
-      type: object
-      properties:
-        success:
-          type: boolean
-          example: true
-
     # 策略绑定的Secret列表响应
     PolicyBindingListResponse:
       allOf:
@@ -134,7 +126,7 @@ components:
             items:
               type: array
               items:
-                $ref: '../secret.yaml#/components/schemas/SecretResponse'
+                $ref: './secret.yaml#/components/schemas/SecretResponse'
             policy_id:
               type: integer
               format: int64

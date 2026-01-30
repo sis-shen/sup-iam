@@ -57,14 +57,14 @@ Debug API 用于系统运维、问题排查与鉴权链路调试，不属于正�
 ### 2.1 auth认证系列
 + 控制面用户认证、登录态管理相关接口
 
-| 方法   | 路径                   | 描述             |
-|------|----------------------|----------------|
-| POST | /auth/login          | 登陆iam用户        |
-| POST | /auth/register       | 注册iam用户,用于自助注册 |
-| POST | /auth/logout         | 退出登录状态         |
-| GET  | /auth/me             | 获取当前用户信息       |
-| POST | /auth/refresh        | Token刷新        |
-| PUT  | /auth/password       | 密码修改           | 
+| 方法   | 路径                    | 描述             |
+|------|-----------------------|----------------|
+| POST | /auth/login           | 登陆iam用户        |
+| POST | /auth/register        | 注册iam用户,用于自助注册 |
+| POST | /auth/logout          | 退出登录状态         |
+| GET  | /auth/me              | 获取当前用户信息       |
+| POST | /auth/refresh         | Token刷新        |
+| PUT  | /auth/password/change | 密码修改           | 
 
 +  IAM 控制面用户管理接口
 

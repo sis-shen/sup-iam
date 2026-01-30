@@ -1,0 +1,139 @@
+# api/components/schemas/audit.yaml
+
+components:
+  schemas:
+    # ========== 核心模型 ==========
+
+    # Policy审计记录
+    PolicyAudit:
+      type: object
+      description: Policy变更历史记录
+      x-go-type: "model.PolicyAudit"
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 9001
+          readOnly: true
+        instance_id:
+          type: string
+          example: "iam-prod-01"
+        name:
+          type: string
+          example: "ReadOnlyAccess"
+        username:
+          type: string
+          example: "alice"
+        description:
+          type: string
+          nullable: true
+          example: "只读访问权限"
+        policy_shadow:
+          type: string
+          nullable: true
+          description: "策略内容快照"
+        extend_shadow:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2024-01-01T00:00:00Z"
+
+    # Binding审计记录
+    SecretPolicyBindingAudit:
+      type: object
+      description: Binding变更历史记录
+      x-go-type: "model.SecretPolicyBindingAudit"
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 9002
+          readOnly: true
+        secret_id:
+          type: integer
+          format: int64
+          example: 1001
+        policy_id:
+          type: integer
+          format: int64
+          example: 5001
+        username:
+          type: string
+          example: "alice"
+        extend_shadow:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+          example: "2024-01-01T00:00:00Z"
+
+    # ========== 响应模型 ==========
+
+    # Policy审计详情响应
+    GetPolicyAuditResponse:
+      type: object
+      properties:
+        policy_audit_id:
+          $ref: '#/components/schemas/PolicyAudit/properties/id'
+        name:
+          $ref: '#/components/schemas/PolicyAudit/properties/name'
+        username:
+          $ref: '#/components/schemas/PolicyAudit/properties/username'
+        description:
+          $ref: '#/components/schemas/PolicyAudit/properties/description'
+        policy_shadow:
+          $ref: '#/components/schemas/PolicyAudit/properties/policy_shadow'
+        extend_shadow:
+          $ref: '#/components/schemas/PolicyAudit/properties/extend_shadow'
+        create_time:
+          $ref: '#/components/schemas/PolicyAudit/properties/created_at'
+        action_content:
+          type: string
+          example: "CREATE_POLICY"
+          description: "操作内容"
+
+    # Policy审计列表响应
+    GetPolicyAuditListResponse:
+      allOf:
+        - $ref: '../common.yaml#/components/schemas/PageResponse'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/GetPolicyAuditResponse'
+
+    # Binding审计详情响应
+    GetBindingAuditResponse:
+      type: object
+      properties:
+        binding_audit_id:
+          $ref: '#/components/schemas/SecretPolicyBindingAudit/properties/id'
+        secret_id:
+          $ref: '#/components/schemas/SecretPolicyBindingAudit/properties/secret_id'
+        policy_id:
+          $ref: '#/components/schemas/SecretPolicyBindingAudit/properties/policy_id'
+        username:
+          $ref: '#/components/schemas/SecretPolicyBindingAudit/properties/username'
+        create_time:
+          $ref: '#/components/schemas/SecretPolicyBindingAudit/properties/created_at'
+        action_content:
+          type: string
+          example: "CREATE_BINDING"
+          description: "操作内容"
+
+    # Binding审计列表响应
+    GetBindingAuditListResponse:
+      allOf:
+        - $ref: '../common.yaml#/components/schemas/PageResponse'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/GetBindingAuditResponse'

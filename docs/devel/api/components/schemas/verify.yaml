@@ -1,0 +1,52 @@
+# api/components/schemas/verify.yaml
+
+components:
+  schemas:
+    # ========== 鉴权请求 ==========
+    VerifyRequest:
+      type: object
+      description: 数据面请求鉴权
+      required: [access_key, method, path, content_hash, timestamp, signature]
+      properties:
+        access_key:
+          type: string
+          example: "AKIAIOSFODNN7EXAMPLE"
+        method:
+          type: string
+          example: "POST"
+        path:
+          type: string
+          example: "/api/v1/users"
+        content_hash:
+          type: string
+          example: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        timestamp:
+          type: integer
+          format: int64
+          example: 1704067200
+        signature:
+          type: string
+          example: "a1b2c3d4e5f6..."
+
+    # ========== 鉴权响应 ==========
+    VerifyResponse:
+      type: object
+      description: 鉴权结果
+      properties:
+        allowed:
+          type: boolean
+          example: true
+        reason:
+          type: string
+          nullable: true
+          example: "权限不足"
+        http_code:
+          type: integer
+          format: int32
+          nullable: true
+          example: 403
+        matched_policies:
+          type: array
+          items:
+            type: string
+          example: ["ReadOnlyAccess", "UserReadPolicy"]
