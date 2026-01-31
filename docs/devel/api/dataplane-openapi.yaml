@@ -5,7 +5,7 @@ info:
   version: 1.0.0
   contact:
     name: supdriver
-    email: github.com/sis-shen/sup-iam
+    url: https://github.com/sis-shen/sup-iam
 
 servers:
   - url: https://127.0.0.1:8889
@@ -15,7 +15,11 @@ servers:
 
 # 导入组件定义
 components:
-  $ref: "./components/common.yaml#/components"
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
 
 tags:
   - name: auth
