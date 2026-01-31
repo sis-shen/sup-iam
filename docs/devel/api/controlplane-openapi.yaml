@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
-  title: IAM API
-  description: 身份与访问管理系统API
+  title: IAM API Control Plane
+  description: 身份与访问管理系统控制面API
   version: 1.0.0
   contact:
     name: supdriver

@@ -1,0 +1,74 @@
+openapi: 3.0.3
+info:
+  title: IAM API Data Plane
+  description: 身份与访问管理系统数据面API
+  version: 1.0.0
+  contact:
+    name: supdriver
+    email: github.com/sis-shen/sup-iam
+
+servers:
+  - url: https://127.0.0.1:8889
+    description: 生产环境
+  - url: http://127.0.0.1:8889
+    description: 开发环境
+
+# 导入组件定义
+components:
+  $ref: "./components/common.yaml#/components"
+
+tags:
+  - name: auth
+    description: 用户认证与登录
+  - name: user
+    description: IAM用户管理
+  - name: secret
+    description: AccessKey/SecretKey管理
+  - name: policy
+    description: 权限策略管理
+  - name: binding
+    description: 策略绑定关系
+  - name: audit
+    description: 审计日志查询
+  - name: auth-verify
+    description: 数据面鉴权
+  - name: Debug
+    description: 调试与诊断接口
+
+security:
+  - BearerAuth: []
+
+# 控制面 API 路径定义
+paths:
+  /auth/v1/verify:
+    post:
+      tags:
+        - auth-verify
+      summary: 鉴权验证
+      description: 数据面请求签名校验与权限判定
+      operationId: verifyRequest
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "./components/schemas/verify.yaml#/components/schemas/VerifyRequest"
+      responses:
+        "200":
+          description: 鉴权成功
+          content:
+            application/json:
+              schema:
+                $ref: "./components/schemas/verify.yaml#/components/schemas/VerifyResponse"
+        "401":
+          description: 鉴权失败
+          content:
+            application/json:
+              schema:
+                $ref: "./components/common.yaml#/components/schemas/ErrorResponse"
+        "403":
+          description: 权限不足
+          content:
+            application/json:
+              schema:
+                $ref: "./components/common.yaml#/components/schemas/ErrorResponse"
