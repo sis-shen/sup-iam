@@ -1,0 +1,151 @@
+openapi: 3.0.3
+info:
+  contact:
+    name: supdriver
+    url: https://github.com/sis-shen/sup-iam
+  description: 身份与访问管理系统数据面API
+  title: IAM API Data Plane
+  version: 1.0.0
+servers:
+- description: 生产环境
+  url: https://127.0.0.1:8889
+- description: 开发环境
+  url: http://127.0.0.1:8889
+security:
+- BearerAuth: []
+tags:
+- description: 用户认证与登录
+  name: auth
+- description: IAM用户管理
+  name: user
+- description: AccessKey/SecretKey管理
+  name: secret
+- description: 权限策略管理
+  name: policy
+- description: 策略绑定关系
+  name: binding
+- description: 审计日志查询
+  name: audit
+- description: 数据面鉴权
+  name: auth-verify
+- description: 调试与诊断接口
+  name: Debug
+paths:
+  /auth/v1/verify:
+    post:
+      description: 数据面请求签名校验与权限判定
+      operationId: verifyRequest
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VerifyRequest"
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VerifyResponse"
+          description: 鉴权成功
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: 鉴权失败
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+          description: 权限不足
+      summary: 鉴权验证
+      tags:
+      - auth-verify
+components:
+  schemas:
+    VerifyRequest:
+      description: 数据面请求鉴权
+      example:
+        path: /api/v1/users
+        method: POST
+        signature: a1b2c3d4e5f6...
+        access_key: AKIAIOSFODNN7EXAMPLE
+        content_hash: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+        timestamp: 1704067200
+      properties:
+        access_key:
+          example: AKIAIOSFODNN7EXAMPLE
+          type: string
+        method:
+          example: POST
+          type: string
+        path:
+          example: /api/v1/users
+          type: string
+        content_hash:
+          example: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+          type: string
+        timestamp:
+          example: 1704067200
+          format: int64
+          type: integer
+        signature:
+          example: a1b2c3d4e5f6...
+          type: string
+      required:
+      - access_key
+      - content_hash
+      - method
+      - path
+      - signature
+      - timestamp
+      type: object
+    VerifyResponse:
+      description: 鉴权结果
+      example:
+        reason: 权限不足
+        http_code: 403
+        allowed: true
+        matched_policies:
+        - ReadOnlyAccess
+        - UserReadPolicy
+      properties:
+        allowed:
+          example: true
+          type: boolean
+        reason:
+          example: 权限不足
+          nullable: true
+          type: string
+        http_code:
+          example: 403
+          format: int32
+          nullable: true
+          type: integer
+        matched_policies:
+          example:
+          - ReadOnlyAccess
+          - UserReadPolicy
+          items:
+            type: string
+          type: array
+      type: object
+    ErrorResponse:
+      example:
+        error_description: 用户名已存在
+        error: invalid_request
+      properties:
+        error:
+          example: invalid_request
+          type: string
+        error_description:
+          example: 用户名已存在
+          type: string
+      type: object
+  securitySchemes:
+    BearerAuth:
+      bearerFormat: JWT
+      scheme: bearer
+      type: http
