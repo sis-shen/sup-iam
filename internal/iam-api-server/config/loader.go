@@ -94,7 +94,9 @@ func LoadEnvVars(v *viper.Viper) {
 	}
 
 	for key, env := range envMappings {
-		v.BindEnv(key, env)
+		if err := v.BindEnv(key, env); err != nil {
+			fmt.Printf("%s 未绑定: %v\n", key, err)
+		}
 	}
 }
 
