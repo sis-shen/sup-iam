@@ -11,6 +11,7 @@ import (
 
 const (
 	flagLevel             = "log.level"
+	flagV                 = "log.v"
 	flagDisableCaller     = "log.disable-caller"
 	flagDisableStacktrace = "log.disable-stacktrace"
 	flagFormat            = "log.format"
@@ -29,6 +30,7 @@ type Options struct {
 	OutputPaths       []string `json:"output-paths"       mapstructure:"output-paths"`
 	ErrorOutputPaths  []string `json:"error-output-paths" mapstructure:"error-output-paths"`
 	Level             string   `json:"level"              mapstructure:"level"`
+	V                 int32    `json:"v"                  mapstructure:"v"`
 	Format            string   `json:"format"             mapstructure:"format"`
 	DisableCaller     bool     `json:"disable-caller"     mapstructure:"disable-caller"`
 	DisableStacktrace bool     `json:"disable-stacktrace" mapstructure:"disable-stacktrace"`
@@ -41,6 +43,7 @@ type Options struct {
 func NewOptions() *Options {
 	return &Options{
 		Level:             zapcore.InfoLevel.String(),
+		V:                 int32(0),
 		DisableCaller:     false,
 		DisableStacktrace: false,
 		Format:            consoleFormat,
@@ -71,6 +74,7 @@ func (o *Options) Validate() []error {
 // AddFlags adds flags for log to the specified FlagSet object.
 func (o *Options) AddFlags(fs *pflag.FlagSet) {
 	fs.StringVar(&o.Level, flagLevel, o.Level, "Minimum log output `LEVEL`.")
+	fs.Int32Var(&o.V, flagV, o.V, "V Level")
 	fs.BoolVar(&o.DisableCaller, flagDisableCaller, o.DisableCaller, "Disable output of caller information in the log.")
 	fs.BoolVar(&o.DisableStacktrace, flagDisableStacktrace,
 		o.DisableStacktrace, "Disable the log to record a stack trace for all messages at or above panic level.")
