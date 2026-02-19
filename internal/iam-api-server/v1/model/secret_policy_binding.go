@@ -2,8 +2,8 @@ package model
 
 import "time"
 
-// SecretPolicyBinding represents m:n binding between Secret and Policy
-type SecretPolicyBinding struct {
+// Binding represents m:n binding between Secret and Policy
+type Binding struct {
 	ID           uint64    `gorm:"column:id;comment:自增主键"`
 	SecretID     uint64    `gorm:"column:secretID;comment:密钥 ID"`
 	PolicyID     uint64    `gorm:"column:policyID;comment:策略 ID"`

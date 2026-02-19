@@ -2,8 +2,8 @@ package model
 
 import "time"
 
-// SecretPolicyBindingAudit records binding change history
-type SecretPolicyBindingAudit struct {
+// BindingAudit records binding change history
+type BindingAudit struct {
 	ID           uint64    `gorm:"column:id;comment:自增主键"`
 	SecretID     uint64    `gorm:"column:secretID;comment:密钥 ID"`
 	PolicyID     uint64    `gorm:"column:policyID;comment:策略 ID"`
