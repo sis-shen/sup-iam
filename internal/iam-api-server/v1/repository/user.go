@@ -10,5 +10,5 @@ type UserRepository interface {
 	GetByPhone(string) (*model.User, error)
 	Update(*model.User) (*model.User, error)
 	DeleteByID(string) error
-	GetListPage(query PageQuery) (PageResult[*model.User], error)
+	GetList(query PageQuery) (PageResult[*model.User], error)
 }

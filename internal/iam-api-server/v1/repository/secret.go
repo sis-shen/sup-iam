@@ -7,6 +7,6 @@ type SecretRepository interface {
 	GetByID(string) (*model.Secret, error)
 	Update(*model.Secret) (*model.Secret, error)
 	DeleteByID(string) error
-	GetListByUserID(userID int, query PageQuery) (PageResult[*model.Secret], error)
-	GetPolicyListBySecretID(secretID int, query PageQuery) (PageResult[*model.Policy], error)
+	GetListByUserID(userID string, query PageQuery) (PageResult[*model.Secret], error)
+	GetPolicyListBySecretID(secretID string, query PageQuery) (PageResult[*model.Policy], error)
 }
