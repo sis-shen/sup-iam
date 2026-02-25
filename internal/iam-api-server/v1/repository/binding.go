@@ -1,10 +1,13 @@
 package repository
 
-import "github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
+import (
+	"context"
+	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
+)
 
 type BindingRepository interface {
-	Create(*model.Binding) (*model.Binding, error)
-	GetByID(string) (*model.Binding, error)
-	DeleteByID(string) error
-	GetListByUserID(userID string, query PageQuery) (PageResult[*model.Binding], error)
+	Create(ctx context.Context, binding *model.Binding) (*model.Binding, error)
+	GetByID(ctx context.Context, id string) (*model.Binding, error)
+	DeleteByID(ctx context.Context, id string) error
+	GetListByUserID(id string, query PageQuery) (PageResult[*model.Binding], error)
 }

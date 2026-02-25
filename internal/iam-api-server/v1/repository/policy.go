@@ -1,12 +1,15 @@
 package repository
 
-import "github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
+import (
+	"context"
+	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
+)
 
 type PolicyRepository interface {
-	Create(*model.Policy) (*model.Policy, error)
-	GetByID(string) (*model.Policy, error)
-	Update(*model.Policy) (*model.Policy, error)
-	DeleteByID(string) error
-	GetListByUserID(userID string, query PageQuery) (PageResult[*model.Policy], error)
-	GetSecretListByPolicyID(policyID string, query PageQuery) (PageResult[*model.Secret], error)
+	Create(ctx context.Context, policy *model.Policy) (*model.Policy, error)
+	GetByID(ctx context.Context, id string) (*model.Policy, error)
+	Update(ctx context.Context, policy *model.Policy) (*model.Policy, error)
+	DeleteByID(ctx context.Context, id string) error
+	GetListByUserID(ctx context.Context, id string, query PageQuery) (PageResult[*model.Policy], error)
+	GetSecretListByPolicyID(ctx context.Context, id string, query PageQuery) (PageResult[*model.Secret], error)
 }
