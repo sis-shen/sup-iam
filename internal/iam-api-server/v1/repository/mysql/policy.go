@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"fmt"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/repository"
@@ -14,51 +15,51 @@ type PolicyStore struct {
 
 var _ repository.PolicyRepository = &PolicyStore{}
 
-func (ps *PolicyStore) Create(policy *model.Policy) (*model.Policy, error) {
-	if err := ps.db.Create(policy).Error; err != nil {
+func (ps *PolicyStore) Create(ctx context.Context, policy *model.Policy) (*model.Policy, error) {
+	if err := ps.db.WithContext(ctx).Create(policy).Error; err != nil {
 		return nil, repoError(err)
 	}
 	return policy, nil
 }
 
-func (ps *PolicyStore) GetByID(policyID string) (*model.Policy, error) {
+func (ps *PolicyStore) GetByID(ctx context.Context, policyID string) (*model.Policy, error) {
 	policy := &model.Policy{}
-	if err := ps.db.Where("id = ?", policyID).First(policy).Error; err != nil {
+	if err := ps.db.WithContext(ctx).Where("id = ?", policyID).First(policy).Error; err != nil {
 		return nil, repoError(err)
 	}
 	return policy, nil
 }
 
-func (ps *PolicyStore) Update(policy *model.Policy) (*model.Policy, error) {
-	if err := ps.db.Save(policy).Error; err != nil {
+func (ps *PolicyStore) Update(ctx context.Context, policy *model.Policy) (*model.Policy, error) {
+	if err := ps.db.WithContext(ctx).Save(policy).Error; err != nil {
 		return nil, repoError(err)
 	}
 	return policy, nil
 }
 
-func (ps *PolicyStore) DeleteByID(policyID string) error {
-	if err := ps.db.Delete(&model.Policy{}, "id = ?", policyID).Error; err != nil {
+func (ps *PolicyStore) DeleteByID(ctx context.Context, policyID string) error {
+	if err := ps.db.WithContext(ctx).Delete(&model.Policy{}, "id = ?", policyID).Error; err != nil {
 		return repoError(err)
 	}
 	return nil
 }
 
-func (ps *PolicyStore) GetListByUserID(userID string, query repository.PageQuery) (repository.PageResult[*model.Policy], error) {
+func (ps *PolicyStore) GetListByUserID(ctx context.Context, userID string, query repository.PageQuery) (repository.PageResult[*model.Policy], error) {
 	mysqlQuery, err := handleQuery(&query)
 	if err != nil || mysqlQuery == nil {
 		return repository.PageResult[*model.Policy]{}, err
 	}
 
-	db := ps.db.Model(&model.Policy{})
+	db := ps.db.WithContext(ctx).Model(&model.Policy{})
 
 	db = db.Where("userID = ?", userID)
 
 	//游标条件
 	if mysqlQuery.Cursor > 0 {
 		if mysqlQuery.Order == repository.OrderAsc {
-			db = db.Where("id > ?", mysqlQuery.Cursor)
+			db = db.Where("id >= ?", mysqlQuery.Cursor)
 		} else {
-			db = db.Where("id < ?", mysqlQuery.Cursor)
+			db = db.Where("id <= ?", mysqlQuery.Cursor)
 		}
 	}
 	// 排序
@@ -89,12 +90,12 @@ func (ps *PolicyStore) GetListByUserID(userID string, query repository.PageQuery
 	return result, nil
 }
 
-func (ps *PolicyStore) GetSecretListByPolicyID(policyID string, query repository.PageQuery) (repository.PageResult[*model.Secret], error) {
+func (ps *PolicyStore) GetSecretListByPolicyID(ctx context.Context, policyID string, query repository.PageQuery) (repository.PageResult[*model.Secret], error) {
 	mysqlQuery, err := handleQuery(&query)
 	if err != nil || mysqlQuery == nil {
 		return repository.PageResult[*model.Secret]{}, err
 	}
-	db := ps.db.Model(&model.Secret{})
+	db := ps.db.WithContext(ctx).Model(&model.Secret{})
 	db = db.Joins(`
     JOIN secret_policy_binding spb
       ON spb.policyID = secrets.id
@@ -104,9 +105,9 @@ func (ps *PolicyStore) GetSecretListByPolicyID(policyID string, query repository
 	//游标条件
 	if mysqlQuery.Cursor > 0 {
 		if mysqlQuery.Order == repository.OrderAsc {
-			db = db.Where("id > ?", mysqlQuery.Cursor)
+			db = db.Where("id >= ?", mysqlQuery.Cursor)
 		} else {
-			db = db.Where("id < ?", mysqlQuery.Cursor)
+			db = db.Where("id <= ?", mysqlQuery.Cursor)
 		}
 	}
 	// 排序
@@ -127,7 +128,10 @@ func (ps *PolicyStore) GetSecretListByPolicyID(policyID string, query repository
 	}
 
 	var total int64
-	if err := db.Count(&total).Error; err != nil {
+	if err := ps.db.WithContext(ctx).
+		Model(&model.Secret{}).
+		Where("policyID = ?", policyID).
+		Count(&total).Error; err != nil {
 		result.Total = total
 	}
 	return result, nil

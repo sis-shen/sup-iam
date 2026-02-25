@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"fmt"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/repository"
@@ -14,28 +15,28 @@ type AuditStore struct {
 
 var _ repository.AuditRepository = &AuditStore{}
 
-func (as *AuditStore) GetPolicyAuditByID(id string) (*model.PolicyAudit, error) {
+func (as *AuditStore) GetPolicyAuditByID(ctx context.Context, id string) (*model.PolicyAudit, error) {
 	policy := &model.PolicyAudit{}
-	if err := as.db.Where("id = ?", id).First(policy).Error; err != nil {
+	if err := as.db.WithContext(ctx).Where("id = ?", id).First(policy).Error; err != nil {
 		return nil, repoError(err)
 	}
 	return policy, nil
 }
 
-func (as *AuditStore) GetPolicyAuditList(query repository.PageQuery) (repository.PageResult[*model.PolicyAudit], error) {
+func (as *AuditStore) GetPolicyAuditList(ctx context.Context, query repository.PageQuery) (repository.PageResult[*model.PolicyAudit], error) {
 	mysqlQuery, err := handleQuery(&query)
 	if err != nil || mysqlQuery == nil {
 		return repository.PageResult[*model.PolicyAudit]{}, err
 	}
 
-	db := as.db.Model(&model.PolicyAudit{})
+	db := as.db.WithContext(ctx).Model(&model.PolicyAudit{})
 
 	//游标条件
 	if mysqlQuery.Cursor > 0 {
 		if mysqlQuery.Order == repository.OrderAsc {
-			db = db.Where("id > ?", mysqlQuery.Cursor)
+			db = db.Where("id >= ?", mysqlQuery.Cursor)
 		} else {
-			db = db.Where("id < ?", mysqlQuery.Cursor)
+			db = db.Where("id <= ?", mysqlQuery.Cursor)
 		}
 	}
 	// 排序
@@ -61,35 +62,37 @@ func (as *AuditStore) GetPolicyAuditList(query repository.PageQuery) (repository
 	}
 
 	var total int64
-	if err := db.Count(&total); err == nil {
+	if err := as.db.WithContext(ctx).
+		Model(&model.PolicyAudit{}).
+		Count(&total); err == nil {
 		result.Total = total
 	}
 
 	return result, nil
 }
 
-func (as *AuditStore) GetBindingAuditByID(id string) (*model.BindingAudit, error) {
+func (as *AuditStore) GetBindingAuditByID(ctx context.Context, id string) (*model.BindingAudit, error) {
 	binding := &model.BindingAudit{}
-	if err := as.db.Where("id = ?", id).First(binding).Error; err != nil {
+	if err := as.db.WithContext(ctx).Where("id = ?", id).First(binding).Error; err != nil {
 		return nil, repoError(err)
 	}
 	return binding, nil
 }
 
-func (as *AuditStore) GetBindingAuditList(query repository.PageQuery) (repository.PageResult[*model.BindingAudit], error) {
+func (as *AuditStore) GetBindingAuditList(ctx context.Context, query repository.PageQuery) (repository.PageResult[*model.BindingAudit], error) {
 	mysqlQuery, err := handleQuery(&query)
 	if err != nil || mysqlQuery == nil {
 		return repository.PageResult[*model.BindingAudit]{}, err
 	}
 
-	db := as.db.Model(&model.BindingAudit{})
+	db := as.db.WithContext(ctx).Model(&model.BindingAudit{})
 
 	//游标条件
 	if mysqlQuery.Cursor > 0 {
 		if mysqlQuery.Order == repository.OrderAsc {
-			db = db.Where("id > ?", mysqlQuery.Cursor)
+			db = db.Where("id >= ?", mysqlQuery.Cursor)
 		} else {
-			db = db.Where("id < ?", mysqlQuery.Cursor)
+			db = db.Where("id <= ?", mysqlQuery.Cursor)
 		}
 	}
 	// 排序
@@ -115,7 +118,9 @@ func (as *AuditStore) GetBindingAuditList(query repository.PageQuery) (repositor
 	}
 
 	var total int64
-	if err := db.Count(&total); err == nil {
+	if err := as.db.WithContext(ctx).
+		Model(&model.BindingAudit{}).
+		Count(&total); err == nil {
 		result.Total = total
 	}
 

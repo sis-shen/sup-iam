@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"context"
 	"fmt"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/repository"
@@ -14,51 +15,51 @@ type SecretStore struct {
 
 var _ repository.SecretRepository = &SecretStore{}
 
-func (ss *SecretStore) Create(secret *model.Secret) (*model.Secret, error) {
-	if err := ss.db.Create(secret).Error; err != nil {
+func (ss *SecretStore) Create(ctx context.Context, secret *model.Secret) (*model.Secret, error) {
+	if err := ss.db.WithContext(ctx).Create(secret).Error; err != nil {
 		return nil, repoError(err)
 	}
 	return secret, nil
 }
 
-func (ss *SecretStore) GetByID(id string) (*model.Secret, error) {
+func (ss *SecretStore) GetByID(ctx context.Context, id string) (*model.Secret, error) {
 	secret := &model.Secret{}
-	if err := ss.db.Where("id = ?", id).First(secret).Error; err != nil {
+	if err := ss.db.WithContext(ctx).Where("id = ?", id).First(secret).Error; err != nil {
 		return nil, repoError(err)
 	}
 	return secret, nil
 }
 
-func (ss *SecretStore) Update(secret *model.Secret) (*model.Secret, error) {
-	if err := ss.db.Save(secret).Error; err != nil {
+func (ss *SecretStore) Update(ctx context.Context, secret *model.Secret) (*model.Secret, error) {
+	if err := ss.db.WithContext(ctx).Save(secret).Error; err != nil {
 		return nil, repoError(err)
 	}
 	return secret, nil
 }
 
-func (ss *SecretStore) DeleteByID(id string) error {
-	if err := ss.db.Delete(&model.Secret{}, "id = ?", id).Error; err != nil {
+func (ss *SecretStore) DeleteByID(ctx context.Context, id string) error {
+	if err := ss.db.WithContext(ctx).Delete(&model.Secret{}, "id = ?", id).Error; err != nil {
 		return repoError(err)
 	}
 	return nil
 }
 
-func (ss *SecretStore) GetListByUserID(userID string, query repository.PageQuery) (repository.PageResult[*model.Secret], error) {
+func (ss *SecretStore) GetListByUserID(ctx context.Context, userID string, query repository.PageQuery) (repository.PageResult[*model.Secret], error) {
 	mysqlQuery, err := handleQuery(&query)
 	if err != nil || mysqlQuery == nil {
 		return repository.PageResult[*model.Secret]{}, err
 	}
 
-	db := ss.db.Model(&model.Secret{})
+	db := ss.db.WithContext(ctx).Model(&model.Secret{})
 
 	db = db.Where("userID = ?", userID)
 
 	//游标条件
 	if mysqlQuery.Cursor > 0 {
 		if mysqlQuery.Order == repository.OrderAsc {
-			db = db.Where("id > ?", mysqlQuery.Cursor)
+			db = db.Where("id >= ?", mysqlQuery.Cursor)
 		} else {
-			db = db.Where("id < ?", mysqlQuery.Cursor)
+			db = db.Where("id <= ?", mysqlQuery.Cursor)
 		}
 	}
 	// 排序
@@ -83,7 +84,9 @@ func (ss *SecretStore) GetListByUserID(userID string, query repository.PageQuery
 	}
 
 	var total int64
-	if err := db.Count(&total).Error; err != nil {
+	if err := ss.db.WithContext(ctx).
+		Model(&model.Secret{}).
+		Where("userID = ", userID).Count(&total).Error; err != nil {
 		result.Total = total
 	}
 	return result, nil
@@ -96,12 +99,12 @@ func (ss *SecretStore) GetListByUserID(userID string, query repository.PageQuery
 // WHERE spb.secretID = ?
 // ORDER BY p.id ASC
 // LIMIT ?, ?
-func (ss *SecretStore) GetPolicyListBySecretID(secretID string, query repository.PageQuery) (repository.PageResult[*model.Policy], error) {
+func (ss *SecretStore) GetPolicyListBySecretID(ctx context.Context, secretID string, query repository.PageQuery) (repository.PageResult[*model.Policy], error) {
 	mysqlQuery, err := handleQuery(&query)
 	if err != nil || mysqlQuery == nil {
 		return repository.PageResult[*model.Policy]{}, err
 	}
-	db := ss.db.Model(&model.Policy{})
+	db := ss.db.WithContext(ctx).Model(&model.Policy{})
 	db = db.Joins(`
     JOIN secret_policy_binding spb
       ON spb.policyID = policies.id
@@ -111,9 +114,9 @@ func (ss *SecretStore) GetPolicyListBySecretID(secretID string, query repository
 	//游标条件
 	if mysqlQuery.Cursor > 0 {
 		if mysqlQuery.Order == repository.OrderAsc {
-			db = db.Where("id > ?", mysqlQuery.Cursor)
+			db = db.Where("id >= ?", mysqlQuery.Cursor)
 		} else {
-			db = db.Where("id < ?", mysqlQuery.Cursor)
+			db = db.Where("id <= ?", mysqlQuery.Cursor)
 		}
 	}
 	// 排序
@@ -134,7 +137,15 @@ func (ss *SecretStore) GetPolicyListBySecretID(secretID string, query repository
 	}
 
 	var total int64
-	if err := db.Count(&total).Error; err != nil {
+	if err := ss.db.WithContext(ctx).
+		Model(&model.Policy{}).
+		Joins(`
+    	JOIN secret_policy_binding spb
+      	ON spb.policyID = policies.id
+		`).
+		Where("secretID = ?", secretID).
+		Count(&total).
+		Error; err != nil {
 		result.Total = total
 	}
 	return result, nil
