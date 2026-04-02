@@ -13,6 +13,10 @@ type PolicyStore struct {
 	db *gorm.DB
 }
 
+func NewPolicyStore(db *gorm.DB) *PolicyStore {
+	return &PolicyStore{db: db}
+}
+
 var _ repository.PolicyRepository = &PolicyStore{}
 
 func (ps *PolicyStore) Create(ctx context.Context, policy *model.Policy) (*model.Policy, error) {

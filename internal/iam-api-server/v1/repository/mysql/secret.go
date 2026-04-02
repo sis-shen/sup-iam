@@ -13,6 +13,10 @@ type SecretStore struct {
 	db *gorm.DB
 }
 
+func NewSecretStore(db *gorm.DB) *SecretStore {
+	return &SecretStore{db: db}
+}
+
 var _ repository.SecretRepository = &SecretStore{}
 
 func (ss *SecretStore) Create(ctx context.Context, secret *model.Secret) (*model.Secret, error) {

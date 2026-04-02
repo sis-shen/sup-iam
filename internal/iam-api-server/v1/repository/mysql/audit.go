@@ -13,6 +13,10 @@ type AuditStore struct {
 	db *gorm.DB
 }
 
+func NewAuditStore(db *gorm.DB) *AuditStore {
+	return &AuditStore{db: db}
+}
+
 var _ repository.AuditRepository = &AuditStore{}
 
 func (as *AuditStore) GetPolicyAuditByID(ctx context.Context, id string) (*model.PolicyAudit, error) {

@@ -13,6 +13,10 @@ type BindingStore struct {
 	db *gorm.DB
 }
 
+func NewBindingStore(db *gorm.DB) *BindingStore {
+	return &BindingStore{db: db}
+}
+
 var _ repository.BindingRepository = &BindingStore{}
 
 func (bs *BindingStore) Create(ctx context.Context, binding *model.Binding) (*model.Binding, error) {

@@ -13,6 +13,10 @@ type UserStore struct {
 	db *gorm.DB
 }
 
+func NewUserStore(db *gorm.DB) *UserStore {
+	return &UserStore{db: db}
+}
+
 var _ repository.UserRepository = &UserStore{}
 
 func (us *UserStore) Create(ctx context.Context, user *model.User) (*model.User, error) {
