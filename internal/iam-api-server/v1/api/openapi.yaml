@@ -2119,6 +2119,9 @@ components:
         total:
           format: int64
           type: integer
+        next:
+          format: alice
+          type: string
       type: object
   securitySchemes:
     BearerAuth:
