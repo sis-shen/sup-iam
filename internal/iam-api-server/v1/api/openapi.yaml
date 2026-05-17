@@ -1431,7 +1431,7 @@ components:
           additionalProperties: true
           description: 扩展字段，JSON对象格式
           nullable: true
-          type: object
+          type: string
       type: object
     SecretResponse:
       example:
