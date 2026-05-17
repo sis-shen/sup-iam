@@ -14,6 +14,6 @@ type IsEnable int32
 
 // List of IsEnable
 const (
-	_0 IsEnable = 0
-	_1 IsEnable = 1
+	_enabled  IsEnable = 0
+	_disabled IsEnable = 1
 )

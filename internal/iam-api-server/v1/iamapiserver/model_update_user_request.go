@@ -28,5 +28,5 @@ type UpdateUserRequest struct {
 	Password *string `json:"password,omitempty"`
 
 	// 扩展字段，JSON对象格式
-	ExtendShadow *map[string]interface{} `json:"extend_shadow,omitempty"`
+	ExtendShadow *string `json:"extend_shadow,omitempty"`
 }

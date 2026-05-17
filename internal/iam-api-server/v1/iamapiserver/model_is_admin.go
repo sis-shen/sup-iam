@@ -14,6 +14,6 @@ type IsAdmin int32
 
 // List of IsAdmin
 const (
-	_0 IsAdmin = 0
-	_1 IsAdmin = 1
+	_admin    IsAdmin = 0
+	_notAdmin IsAdmin = 1
 )
