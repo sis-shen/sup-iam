@@ -38,7 +38,7 @@ CREATE TABLE secrets (
                          instanceID VARCHAR(32) NOT NULL COMMENT '跨域 UUID',
                          userID BIGINT UNSIGNED NOT NULL COMMENT '所属用户 ID',
                          username VARCHAR(255) NOT NULL COMMENT '用户名（冗余字段）',
-                         accessKey VARCHAR(36) NOT NULL COMMENT 'AccessKey',
+                         accessKey VARCHAR(32) NOT NULL COMMENT 'AccessKey',
                          secretKey VARCHAR(255) NOT NULL COMMENT 'SecretKey（明文存储）',
                          expires INT UNSIGNED DEFAULT 1534308590 COMMENT '过期时间（Unix 秒）',
                          description VARCHAR(255) DEFAULT NULL COMMENT '密钥描述',
