@@ -19,4 +19,6 @@ type PolicyBindingListResponse struct {
 	Total int64 `json:"total,omitempty"`
 
 	PolicyId int64 `json:"policy_id,omitempty"`
+
+	Next string `json:"next,omitempty"`
 }

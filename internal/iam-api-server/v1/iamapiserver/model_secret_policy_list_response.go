@@ -19,4 +19,6 @@ type SecretPolicyListResponse struct {
 	Total int64 `json:"total,omitempty"`
 
 	SecretId int64 `json:"secret_id,omitempty"`
+
+	Next string `json:"next,omitempty"`
 }

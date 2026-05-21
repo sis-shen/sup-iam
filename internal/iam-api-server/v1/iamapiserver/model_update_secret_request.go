@@ -14,5 +14,5 @@ type UpdateSecretRequest struct {
 
 	Expires *int64 `json:"expires,omitempty"`
 
-	ExtendShadow *map[string]interface{} `json:"extend_shadow,omitempty"`
+	ExtendShadow string `json:"extend_shadow,omitempty"`
 }

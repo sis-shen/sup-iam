@@ -17,4 +17,6 @@ type GetBindingAuditListResponse struct {
 	PageSize int32 `json:"page_size,omitempty"`
 
 	Total int64 `json:"total,omitempty"`
+
+	Next string `json:"next,omitempty"`
 }
