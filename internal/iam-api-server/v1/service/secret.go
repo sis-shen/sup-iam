@@ -5,7 +5,6 @@ import (
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/repository"
 	"github.com/sis-shen/sup-iam/internal/pkg/keys"
-	"go.uber.org/zap/zapcore"
 	"time"
 )
 
@@ -75,4 +74,8 @@ func (sc *SecretCase) GenerateSecretKey() string {
 
 func (sc *SecretCase) GenerateAccessKey() string {
 	return sc.keys.GenerateAccessKey()
+}
+
+func (sc *SecretCase) GetSecretBindingPolicy(ctx context.Context, id string, query repository.PageQuery) (repository.PageResult[*model.Policy], error) {
+	return sc.repo.GetPolicyListBySecretID(ctx, id, query)
 }
