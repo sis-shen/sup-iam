@@ -1546,7 +1546,7 @@ components:
         extend_shadow:
           additionalProperties: true
           nullable: true
-          type: object
+          type: string
       type: object
     SecretListResponse:
       allOf:
@@ -1596,12 +1596,15 @@ components:
         expires:
           example: 1735689600
           format: int64
-          nullable: true
+          nullable: false
           type: integer
         extend_shadow:
           additionalProperties: true
           nullable: true
-          type: object
+          type: string
+        user_name:
+          nullable: false
+          type: string
       type: object
     CreateSecretResponse:
       allOf:
