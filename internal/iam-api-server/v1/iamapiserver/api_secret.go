@@ -10,57 +10,466 @@
 package iamapiserver
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
+	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/service"
+	"github.com/sis-shen/sup-iam/internal/pkg/log"
+	"strconv"
+	"time"
 )
 
 type SecretAPI struct {
+	secretCase service.SecretCaseInterface
+	logger     log.Logger
 }
 
 // Get /api/v1/secrets
 // 获取 Secret 列表
 func (api *SecretAPI) ApiV1SecretsGet(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1SecretsGet")
+	logger.Info("Received get secrets request")
+
+	logger.Debugf("Request headers: %v", c.Request.Header)
+	logger.Debugf("Query params: %v", c.Request.URL.Query())
+	// 1. 解析请求参数
+	userIdAny, ok := c.Get(UserIDKey)
+	if !ok {
+		logger.Warnf("User ID header not found")
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: "Fail to get UserID from token",
+		}
+		c.JSON(500, errRsp)
+		return
+
+	}
+	// 类型断言为 string
+	userID, ok := userIdAny.(string)
+	if !ok {
+		logger.Warnf("User ID header type error")
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: "Fail to get UserID from token, userID type error",
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+	query, err := service.ParseListQuery(c)
+	if err != nil {
+		logger.Warnf("Error parsing query params: %v", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	logger.Debugw("Parsed query: ", "limit", query.Limit,
+		"cursor", query.Cursor, "order", query.Order, "order_by", query.OrderBy)
+
+	// 2. 从数据库获取数据
+	logger.Infow("Fetching secrets", "limit", query.Limit,
+		"cursor", query.Cursor, "order", query.Order, "order_by", query.OrderBy)
+	res, err := api.secretCase.GetSecretList(c, userID, query)
+
+	if err != nil {
+		logger.Warnf("Error getting secrets from service: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	logger.Infow("Successfully fetched secrets", "count", len(res.Items),
+		"next", res.Next, "total", res.Total)
+
+	items, err := ParseSecretModelList(res.Items)
+	if err != nil {
+		logger.Warnf("Error parsing secret model: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	logger.Debugw("Parse secret list", "items_len", len(items))
+	data := SecretListResponse{
+		Items:    items,
+		Page:     service.GetPage(c),
+		PageSize: service.GetPageSize(c),
+		Total:    res.Total,
+		Next:     res.Next,
+	}
+
+	c.JSON(200, data)
+	logger.Info("Get secret request completed successfully")
 }
 
 // Delete /api/v1/secrets/:id
 // 删除 Secret
 func (api *SecretAPI) ApiV1SecretsIdDelete(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1SecretsIdDelete")
+	logger.Info("Received delete secrets request")
+	// 解析参数
+	id := c.Param("id")
+
+	if id == "" {
+		logger.Warnf("Error parsing secret: id not found")
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: "id not found",
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	// 执行操作
+	logger.Infow("Deleting secret", "id", id)
+	err := api.secretCase.DeleteSecret(c, id)
+	if err != nil {
+		logger.Warnf("Error deleting secret: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	c.JSON(200, "")
+	logger.Info("Secret deleted successfully")
 }
 
 // Get /api/v1/secrets/:id
 // 获取指定 Secret 信息
 func (api *SecretAPI) ApiV1SecretsIdGet(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1SecretsIdGet")
+	logger.Info("Received get secret request")
+	// 解析参数
+	id := c.Param("id")
+
+	if id == "" {
+		logger.Warnf("Error parsing secret id: id not found")
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: "id not found",
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	// 执行操作
+	logger.Infow("Getting secretID", "id", id)
+
+	secret, err := api.secretCase.GetSecretByID(c, id)
+
+	if err != nil {
+		logger.Warnf("Error getting secret: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	c.JSON(200, ParseSecretModel(*secret))
+	logger.Info("User got successfully")
 }
 
 // Get /api/v1/secrets/:id/policies
 // 获取 Secret 绑定的 Policy 列表
 func (api *SecretAPI) ApiV1SecretsIdPoliciesGet(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1SecretsIdPoliciesGet")
+	logger.Info("Received get policy list of secret request")
+
+	logger.Debugf("Request headers: %v", c.Request.Header)
+	logger.Debugf("Query params: %v", c.Request.URL.Query())
+	// 1. 解析请求参数
+	id := c.Param("id")
+
+	if id == "" {
+		logger.Warnf("Error parsing secret id: id not found")
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: "id not found",
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	query, err := service.ParseListQuery(c)
+	if err != nil {
+		logger.Warnf("Error parsing query params: %v", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	logger.Debugw("Parsed query: ", "limit", query.Limit,
+		"cursor", query.Cursor, "order", query.Order, "order_by", query.OrderBy)
+
+	// 2. 从数据库获取数据
+	logger.Infow("Fetching users", "limit", query.Limit,
+		"cursor", query.Cursor, "order", query.Order, "order_by", query.OrderBy)
+	res, err := api.secretCase.GetSecretBindingPolicy(c, id, query)
+
+	if err != nil {
+		logger.Warnf("Error getting policies from service: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	logger.Infow("Successfully fetched users", "count", len(res.Items),
+		"next", res.Next, "total", res.Total)
+
+	items, err := ParsePolicyModelList(res.Items)
+	if err != nil {
+		logger.Warnf("Error parsing policy model: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	logger.Debugw("Parse secret list", "items_len", len(items))
+	data := SecretPolicyListResponse{
+		Items:    items,
+		Page:     service.GetPage(c),
+		PageSize: service.GetPageSize(c),
+		Total:    res.Total,
+		Next:     res.Next,
+	}
+
+	c.JSON(200, data)
+	logger.Info("Get secret request completed successfully")
 }
 
 // Put /api/v1/secrets/:id
 // 更新 Secret
 func (api *SecretAPI) ApiV1SecretsIdPut(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1SecretsIdPut")
+	logger.Info("Received update secret request")
+	// 解析参数
+	id := c.Param("id")
+
+	if id == "" {
+		logger.Warnf("Error parsing secret id: id not found")
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: "id not found",
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	req := UpdateSecretRequest{}
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		logger.Warnw("Error parsing body", "err", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	modelSecret, err := api.secretCase.GetSecretByID(c, id)
+	if err != nil {
+		logger.Warnf("Error getting secrests from service: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	if req.Description != modelSecret.Description {
+		modelSecret.Description = req.Description
+	}
+	if *req.Expires != modelSecret.Expires {
+		modelSecret.Expires = *req.Expires
+	}
+	if req.ExtendShadow != *modelSecret.ExtendShadow {
+		modelSecret.ExtendShadow = &req.ExtendShadow
+	}
+
+	secret, err := api.secretCase.UpdateSecret(c, modelSecret)
+	if err != nil {
+		logger.Warnf("Error updating secret: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	rsp := ParseSecretModel(*secret)
+
+	c.JSON(200, rsp)
+	logger.Info("User updated successfully")
 }
 
 // Put /api/v1/secrets/:id/rotate
 // 轮换 Secret
 func (api *SecretAPI) ApiV1SecretsIdRotatePut(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1SecretsIdRotatePut")
+	logger.Info("Received update secret request")
+	// 解析参数
+	id := c.Param("id")
+
+	if id == "" {
+		logger.Warnf("Error parsing secret id: id not found")
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: "id not found",
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	secret, err := api.secretCase.RotateSecret(c, id)
+	if err != nil {
+		logger.Warnf("Error rotating secret: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	rsp :=
+		RotateSecretResponse{
+			Id:        int64(secret.ID),
+			AccessKey: secret.AccessKey,
+			SecretKey: secret.SecretKey,
+			Expires:   &secret.Expires,
+			UpdatedAt: secret.UpdatedAt,
+		}
+	c.JSON(200, rsp)
+
 }
 
 // Post /api/v1/secrets
 // 创建 Secret
 func (api *SecretAPI) ApiV1SecretsPost(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1SecretsPost")
+	logger.Info("Received create secret request")
+
+	// 1. 解析请求参数
+	userIdAny, ok := c.Get(UserIDKey)
+	if !ok {
+		logger.Warnf("User ID header not found")
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: "Fail to get UserID from token",
+		}
+		c.JSON(500, errRsp)
+		return
+
+	}
+	// 类型断言为 string
+	IDStr, ok := userIdAny.(string)
+	if !ok {
+		logger.Warnf("User ID header type error")
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: "Fail to get UserID from token, userID type error",
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	userID, err := strconv.ParseUint(IDStr, 10, 64)
+	if err != nil {
+		// 处理错误
+		fmt.Println("转换失败:", err)
+		return
+	}
+
+	req := CreateSecretRequest{}
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		logger.Warnw("Error parsing body", "err", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	expires := req.Expires
+	if expires == nil {
+		logger.Warnf("Expires is nil")
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: "Expires is nil",
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	accessKey := api.secretCase.GenerateAccessKey()
+	secretKey := api.secretCase.GenerateSecretKey()
+
+	nowTime := time.Now()
+	instanceID := service.GenerateInstanceID()
+
+	modelSecret := model.Secret{
+		InstanceID:   instanceID,
+		UserID:       userID,
+		Username:     *req.UserName,
+		AccessKey:    accessKey,
+		SecretKey:    secretKey,
+		Expires:      *expires,
+		Description:  req.Description,
+		ExtendShadow: &req.ExtendShadow,
+		CreatedAt:    nowTime,
+		UpdatedAt:    nowTime,
+	}
+
+	secret, err := api.secretCase.CreateSecret(c, &modelSecret)
+
+	if err != nil {
+		logger.Warnf("Error creating secret: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	rsp := CreateSecretResponse{
+		Id:           int64(secret.ID),
+		InstanceId:   secret.InstanceID,
+		UserId:       int64(secret.UserID),
+		Username:     secret.Username,
+		AccessKey:    secret.AccessKey,
+		SecretKey:    secret.SecretKey,
+		Expires:      &secret.Expires,
+		ExtendShadow: secret.ExtendShadow,
+		Description:  secret.Description,
+		CreatedAt:    secret.CreatedAt,
+		UpdatedAt:    secret.UpdatedAt,
+	}
+	c.JSON(200, rsp)
 }
