@@ -11,49 +11,370 @@ package iamapiserver
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
+	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/service"
+	"github.com/sis-shen/sup-iam/internal/pkg/log"
+	"time"
 )
 
 type PolicyAPI struct {
+	policyCase service.PolicyCaseInterface
+	logger     log.Logger
 }
 
 // Get /api/v1/policies
 // 获取 Policy 列表
 func (api *PolicyAPI) ApiV1PoliciesGet(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1PoliciesGet")
+	logger.Info("Received get policy request")
+
+	logger.Debugf("Request headers: %v", c.Request.Header)
+	logger.Debugf("Query params: %v", c.Request.URL.Query())
+	// 1. 解析请求参数
+	userIdAny, ok := c.Get(UserIDKey)
+	if !ok {
+		logger.Warnf("User ID header not found")
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: "Fail to get UserID from token",
+		}
+		c.JSON(500, errRsp)
+		return
+
+	}
+	// 类型断言为 string
+	userID, ok := userIdAny.(string)
+	if !ok {
+		logger.Warnf("User ID header type error")
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: "Fail to get UserID from token, userID type error",
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	query, err := service.ParseListQuery(c)
+	if err != nil {
+		logger.Warnf("Error parsing query params: %v", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	logger.Debugw("Parsed query: ", "limit", query.Limit,
+		"cursor", query.Cursor, "order", query.Order, "order_by", query.OrderBy)
+
+	// 2. 从数据库获取数据
+	logger.Infow("Fetching secrets", "limit", query.Limit,
+		"cursor", query.Cursor, "order", query.Order, "order_by", query.OrderBy)
+	res, err := api.policyCase.GetPolicyList(c, userID, query)
+
+	if err != nil {
+		logger.Warnf("Error getting policies from service: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	logger.Infow("Successfully fetched policies", "count", len(res.Items),
+		"next", res.Next, "total", res.Total)
+
+	items, err := ParsePolicyModelList(res.Items)
+	if err != nil {
+		logger.Warnf("Error parsing secret model: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	logger.Debugw("Parse secret list", "items_len", len(items))
+	data := PolicyListResponse{
+		Items:    items,
+		Page:     service.GetPage(c),
+		PageSize: service.GetPageSize(c),
+		Total:    res.Total,
+		Next:     res.Next,
+	}
+
+	c.JSON(200, data)
+	logger.Info("Get policy request completed successfully")
 }
 
 // Delete /api/v1/policies/:id
 // 删除 Policy
 func (api *PolicyAPI) ApiV1PoliciesIdDelete(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1PoliciesIdDelete")
+	logger.Info("Received delete policy request")
+	// 解析参数
+	id := c.Param("id")
+
+	if id == "" {
+		logger.Warnf("Error parsing policy: id not found")
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: "id not found",
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	// 执行操作
+	logger.Infow("Deleting policy", "id", id)
+	err := api.policyCase.DeletePolicy(c, id)
+	if err != nil {
+		logger.Warnf("Error deleting policy: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	c.JSON(200, "")
+	logger.Info("policy deleted successfully")
 }
 
 // Get /api/v1/policies/:id
 // 获取指定 Policy 信息
 func (api *PolicyAPI) ApiV1PoliciesIdGet(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1PoliciesIdGet")
+	logger.Info("Received get policy request")
+	// 解析参数
+	id := c.Param("id")
+
+	if id == "" {
+		logger.Warnf("Error parsing policy id: id not found")
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: "id not found",
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	// 执行操作
+	logger.Infow("Getting policyID", "id", id)
+
+	policy, err := api.policyCase.GetPolicyByID(c, id)
+
+	if err != nil {
+		logger.Warnf("Error getting policy: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	c.JSON(200, ParsePolicyModel(*policy))
+	logger.Info("Policy got successfully")
 }
 
 // Put /api/v1/policies/:id
 // 更新 Policy
 func (api *PolicyAPI) ApiV1PoliciesIdPut(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1PoliciesIdPut")
+	logger.Info("Received update policy request")
+	// 解析参数
+	id := c.Param("id")
+
+	if id == "" {
+		logger.Warnf("Error parsing policy id: id not found")
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: "id not found",
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	req := UpdatePolicyRequest{}
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		logger.Warnw("Error parsing body", "err", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	modelPolicy, err := api.policyCase.GetPolicyByID(c, id)
+	if err != nil {
+		logger.Warnf("Error getting secrests from service: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	if req.Name != modelPolicy.Name {
+		modelPolicy.Name = req.Name
+	}
+
+	if req.Description != modelPolicy.Description {
+		modelPolicy.Description = req.Description
+	}
+	if req.Content != modelPolicy.PolicyShadow {
+		modelPolicy.PolicyShadow = req.Content
+	}
+	if req.ExtendShadow != *modelPolicy.ExtendShadow {
+		modelPolicy.ExtendShadow = &req.ExtendShadow
+	}
+
+	policy, err := api.policyCase.UpdatePolicy(c, modelPolicy)
+	if err != nil {
+		logger.Warnf("Error updating policy: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	rsp := ParsePolicyModel(*policy)
+
+	c.JSON(200, rsp)
+	logger.Info("Policy updated successfully")
+
 }
 
 // Get /api/v1/policies/:id/secrets
 // 获取 Policy 绑定的 Secret 列表
 func (api *PolicyAPI) ApiV1PoliciesIdSecretsGet(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1SecretsIdPoliciesGet")
+	logger.Info("Received get policy list of policy request")
+
+	logger.Debugf("Request headers: %v", c.Request.Header)
+	logger.Debugf("Query params: %v", c.Request.URL.Query())
+	// 1. 解析请求参数
+	id := c.Param("id")
+
+	if id == "" {
+		logger.Warnf("Error parsing policy id: id not found")
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: "id not found",
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	query, err := service.ParseListQuery(c)
+	if err != nil {
+		logger.Warnf("Error parsing query params: %v", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	logger.Debugw("Parsed query: ", "limit", query.Limit,
+		"cursor", query.Cursor, "order", query.Order, "order_by", query.OrderBy)
+
+	// 2. 从数据库获取数据
+	logger.Infow("Fetching users", "limit", query.Limit,
+		"cursor", query.Cursor, "order", query.Order, "order_by", query.OrderBy)
+	res, err := api.policyCase.GetPolicyBindingSecretList(c, id, query)
+
+	if err != nil {
+		logger.Warnf("Error getting policies from service: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	logger.Infow("Successfully fetched secrets", "count", len(res.Items),
+		"next", res.Next, "total", res.Total)
+
+	items, err := ParseSecretModelList(res.Items)
+	if err != nil {
+		logger.Warnf("Error parsing policy model: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	logger.Debugw("Parse policy list", "items_len", len(items))
+	data := PolicyBindingListResponse{
+		Items:    items,
+		Page:     service.GetPage(c),
+		PageSize: service.GetPageSize(c),
+		Total:    res.Total,
+		Next:     res.Next,
+	}
+
+	c.JSON(200, data)
+	logger.Info("Get policy binding secrets request completed successfully")
 }
 
 // Post /api/v1/policies
 // 创建 Policy
 func (api *PolicyAPI) ApiV1PoliciesPost(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1PoliciesPost")
+	logger.Info("Received create policy request")
+
+	// 1. 解析请求参数
+
+	req := CreatePolicyRequest{}
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		logger.Warnw("Error parsing body", "err", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	nowTime := time.Now()
+	instanceID := service.GenerateInstanceID()
+
+	modelSecret := model.Policy{
+		InstanceID:   instanceID,
+		Name:         req.Name,
+		Username:     req.UserName,
+		Description:  req.Description,
+		PolicyShadow: &req.Content,
+		ExtendShadow: &req.ExtendShadow,
+		CreatedAt:    nowTime,
+		UpdatedAt:    nowTime,
+	}
+
+	_, err := api.policyCase.CreatePolicy(c, &modelSecret)
+
+	if err != nil {
+		logger.Warnf("Error creating policy: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	c.JSON(200, "Create policy successfully")
 }
