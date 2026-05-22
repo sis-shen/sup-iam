@@ -1772,7 +1772,7 @@ components:
         extend_shadow:
           additionalProperties: true
           nullable: true
-          type: object
+          type: string
       type: object
     PolicyListResponse:
       allOf:
@@ -1825,7 +1825,10 @@ components:
         extend_shadow:
           additionalProperties: true
           nullable: true
-          type: object
+          type: string
+        user_name:
+          nullable: false
+          type: string
       required:
       - name
       type: object
