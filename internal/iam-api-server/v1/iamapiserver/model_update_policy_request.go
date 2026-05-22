@@ -17,5 +17,5 @@ type UpdatePolicyRequest struct {
 	// 策略内容（JSON格式）
 	Content *string `json:"content,omitempty"`
 
-	ExtendShadow *map[string]interface{} `json:"extend_shadow,omitempty"`
+	ExtendShadow string `json:"extend_shadow,omitempty"`
 }

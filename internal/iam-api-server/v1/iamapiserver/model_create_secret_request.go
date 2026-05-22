@@ -16,5 +16,5 @@ type CreateSecretRequest struct {
 
 	ExtendShadow string `json:"extend_shadow,omitempty"`
 
-	UserName *string `json:"user_name,omitempty"`
+	UserName string `json:"user_name,omitempty"`
 }
