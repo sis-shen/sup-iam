@@ -180,7 +180,7 @@ func (api *SecretAPI) ApiV1SecretsIdGet(c *gin.Context) {
 	}
 
 	c.JSON(200, ParseSecretModel(*secret))
-	logger.Info("User got successfully")
+	logger.Info("Policy got successfully")
 }
 
 // Get /api/v1/secrets/:id/policies
@@ -219,7 +219,7 @@ func (api *SecretAPI) ApiV1SecretsIdPoliciesGet(c *gin.Context) {
 		"cursor", query.Cursor, "order", query.Order, "order_by", query.OrderBy)
 
 	// 2. 从数据库获取数据
-	logger.Infow("Fetching users", "limit", query.Limit,
+	logger.Infow("Fetching policies", "limit", query.Limit,
 		"cursor", query.Cursor, "order", query.Order, "order_by", query.OrderBy)
 	res, err := api.secretCase.GetSecretBindingPolicy(c, id, query)
 
@@ -324,7 +324,7 @@ func (api *SecretAPI) ApiV1SecretsIdPut(c *gin.Context) {
 	rsp := ParseSecretModel(*secret)
 
 	c.JSON(200, rsp)
-	logger.Info("User updated successfully")
+	logger.Info("Secret updated successfully")
 }
 
 // Put /api/v1/secrets/:id/rotate
@@ -436,7 +436,7 @@ func (api *SecretAPI) ApiV1SecretsPost(c *gin.Context) {
 	modelSecret := model.Secret{
 		InstanceID:   instanceID,
 		UserID:       userID,
-		Username:     *req.UserName,
+		Username:     req.UserName,
 		AccessKey:    accessKey,
 		SecretKey:    secretKey,
 		Expires:      *expires,
