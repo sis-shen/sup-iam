@@ -11,35 +11,217 @@ package iamapiserver
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
+	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/service"
+	"github.com/sis-shen/sup-iam/internal/pkg/log"
+	"time"
 )
 
 type BindingAPI struct {
+	bindingCase *service.BindingCase
+	logger      log.Logger
 }
 
 // Get /api/v1/bindings
 // 获取 Binding 列表
 func (api *BindingAPI) ApiV1BindingsGet(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1BindingsGet")
+	logger.Info("Received get binding request")
+
+	logger.Debugf("Request headers: %v", c.Request.Header)
+	logger.Debugf("Query params: %v", c.Request.URL.Query())
+	// 1. 解析请求参数
+	userIdAny, ok := c.Get(UserIDKey)
+	if !ok {
+		logger.Warnf("User ID header not found")
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: "Fail to get UserID from token",
+		}
+		c.JSON(500, errRsp)
+		return
+
+	}
+	// 类型断言为 string
+	userID, ok := userIdAny.(string)
+	if !ok {
+		logger.Warnf("User ID header type error")
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: "Fail to get UserID from token, userID type error",
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	query, err := service.ParseListQuery(c)
+	if err != nil {
+		logger.Warnf("Error parsing query params: %v", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	logger.Debugw("Parsed query: ", "limit", query.Limit,
+		"cursor", query.Cursor, "order", query.Order, "order_by", query.OrderBy)
+
+	// 2. 从数据库获取数据
+	logger.Infow("Fetching secrets", "limit", query.Limit,
+		"cursor", query.Cursor, "order", query.Order, "order_by", query.OrderBy)
+	res, err := api.bindingCase.GetBindingListByUserID(c, userID, query)
+
+	if err != nil {
+		logger.Warnf("Error getting policies from service: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	logger.Infow("Successfully fetched policies", "count", len(res.Items),
+		"next", res.Next, "total", res.Total)
+
+	items, err := ParseBindingModelList(res.Items)
+	if err != nil {
+		logger.Warnf("Error parsing binding model: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	logger.Debugw("Parse binding list", "items_len", len(items))
+	data := BindingListResponse{
+		Items:    items,
+		Page:     service.GetPage(c),
+		PageSize: service.GetPageSize(c),
+		Total:    res.Total,
+		Next:     res.Next,
+	}
+
+	c.JSON(200, data)
+	logger.Info("Get binding request completed successfully")
 }
 
 // Delete /api/v1/bindings/:id
 // 删除 Binding
 func (api *BindingAPI) ApiV1BindingsIdDelete(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1BindingsIdDelete")
+	logger.Info("Received delete binding request")
+	// 解析参数
+	id := c.Param("id")
+
+	if id == "" {
+		logger.Warnf("Error parsing binding: id not found")
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: "id not found",
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	// 执行操作
+	logger.Infow("Deleting binding", "id", id)
+	err := api.bindingCase.DeleteBinding(c, id)
+	if err != nil {
+		logger.Warnf("Error deleting binding: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	c.JSON(200, "")
+	logger.Info("binding deleted successfully")
 }
 
 // Get /api/v1/bindings/:id
 // 获取指定 Binding 信息
 func (api *BindingAPI) ApiV1BindingsIdGet(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1BindingsIdGet")
+	logger.Info("Received get binding request")
+	// 解析参数
+	id := c.Param("id")
+
+	if id == "" {
+		logger.Warnf("Error parsing binding id: id not found")
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: "id not found",
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	// 执行操作
+	logger.Infow("Getting bindingID", "id", id)
+
+	binding, err := api.bindingCase.GetBindingById(c, id)
+
+	if err != nil {
+		logger.Warnf("Error getting binding: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	c.JSON(200, ParseBindingModel(*binding))
+	logger.Info("Binding got successfully")
 }
 
 // Post /api/v1/bindings
 // 创建 Binding
 func (api *BindingAPI) ApiV1BindingsPost(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1PoliciesPost")
+	logger.Info("Received create binding request")
+
+	// 1. 解析请求参数
+
+	req := CreateBindingRequest{}
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		logger.Warnw("Error parsing body", "err", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	nowTime := time.Now()
+
+	modelSecret := model.Binding{
+		SecretID:     uint64(req.SecretId),
+		PolicyID:     uint64(req.PolicyId),
+		Username:     req.Username,
+		ExtendShadow: req.ExtendShadow,
+		CreatedAt:    nowTime,
+	}
+
+	_, err := api.policyCase.CreatePolicy(c, &modelSecret)
+
+	if err != nil {
+		logger.Warnf("Error creating policy: %v", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	c.JSON(200, "Create policy successfully")
 }
