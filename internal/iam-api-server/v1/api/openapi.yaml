@@ -1956,7 +1956,10 @@ components:
         extend_shadow:
           additionalProperties: true
           nullable: true
-          type: object
+          type: string
+        username:
+          nullable: false
+          type: string
       required:
       - policy_id
       - secret_id
