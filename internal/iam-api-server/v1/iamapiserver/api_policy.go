@@ -88,7 +88,7 @@ func (api *PolicyAPI) ApiV1PoliciesGet(c *gin.Context) {
 
 	items, err := ParsePolicyModelList(res.Items)
 	if err != nil {
-		logger.Warnf("Error parsing secret model: %v", err)
+		logger.Warnf("Error parsing policy model: %v", err)
 		errRsp := ErrorResponse{
 			Error:            RepositoryError,
 			ErrorDescription: err.Error(),
@@ -97,7 +97,7 @@ func (api *PolicyAPI) ApiV1PoliciesGet(c *gin.Context) {
 		return
 	}
 
-	logger.Debugw("Parse secret list", "items_len", len(items))
+	logger.Debugw("Parse policy list", "items_len", len(items))
 	data := PolicyListResponse{
 		Items:    items,
 		Page:     service.GetPage(c),
