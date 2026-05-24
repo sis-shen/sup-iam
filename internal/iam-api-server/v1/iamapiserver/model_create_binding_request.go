@@ -14,5 +14,7 @@ type CreateBindingRequest struct {
 
 	PolicyId int64 `json:"policy_id"`
 
-	ExtendShadow *map[string]interface{} `json:"extend_shadow,omitempty"`
+	ExtendShadow *string `json:"extend_shadow,omitempty"`
+
+	Username string `json:"username"`
 }
