@@ -11,6 +11,7 @@ package iamapiserver
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -34,6 +35,7 @@ func NewRouter(handleFunctions ApiHandleFunctions) *gin.Engine {
 
 // NewRouter add routes to existing gin engine.
 func NewRouterWithGinEngine(router *gin.Engine, handleFunctions ApiHandleFunctions) *gin.Engine {
+	// 注册handler函数
 	for _, route := range getRoutes(handleFunctions) {
 		if route.HandlerFunc == nil {
 			route.HandlerFunc = DefaultHandleFunc
@@ -51,6 +53,22 @@ func NewRouterWithGinEngine(router *gin.Engine, handleFunctions ApiHandleFunctio
 			router.DELETE(route.Pattern, route.HandlerFunc)
 		}
 	}
+
+	// 404 处理
+	router.NoRoute(func(c *gin.Context) {
+		c.JSON(http.StatusNotFound, ErrorResponse{
+			Error:            "not_found",
+			ErrorDescription: "the requested resource was not found",
+		})
+	})
+
+	// 健康检查端点
+	router.GET("/health", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"status":    "healthy",
+			"timestamp": time.Now().Unix(),
+		})
+	})
 
 	return router
 }
