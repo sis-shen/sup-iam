@@ -183,7 +183,7 @@ type zapLogger struct {
 	infoLogger
 }
 
-// NewLogger create zapLogger from zao.Logger
+// NewLogger create Logger from zap.Logger
 func NewLogger(l *zap.Logger) Logger {
 	return &zapLogger{
 		zapLogger: l,
