@@ -8,7 +8,6 @@ import (
 
 const (
 	UserIDKey = "user_id"
-	TokenKey  = "token"
 )
 
 func parseUserModel(user model.User) User {
