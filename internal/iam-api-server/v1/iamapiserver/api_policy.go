@@ -22,6 +22,10 @@ type PolicyAPI struct {
 	logger     log.Logger
 }
 
+func NewPolicyAPI(policyCase service.PolicyCaseInterface, logger log.Logger) *PolicyAPI {
+	return &PolicyAPI{policyCase, logger}
+}
+
 // Get /api/v1/policies
 // 获取 Policy 列表
 func (api *PolicyAPI) ApiV1PoliciesGet(c *gin.Context) {

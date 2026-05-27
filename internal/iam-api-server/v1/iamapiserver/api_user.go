@@ -23,9 +23,6 @@ type UserAPI struct {
 }
 
 func NewUserAPI(userCase service.UserCaseInterface, logger log.Logger) *UserAPI {
-	if logger == nil {
-		logger = log.WithName("UserAPI")
-	}
 	return &UserAPI{userCase: userCase, logger: logger}
 }
 

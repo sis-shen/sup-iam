@@ -11,9 +11,17 @@ package iamapiserver
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/service"
 )
 
 type AuditAPI struct {
+	auditCase service.AuditCaseInterface
+}
+
+func NewAuditAPI(auditCase service.AuditCaseInterface) *AuditAPI {
+	return &AuditAPI{
+		auditCase: auditCase,
+	}
 }
 
 // Get /api/v1/audits/bindings

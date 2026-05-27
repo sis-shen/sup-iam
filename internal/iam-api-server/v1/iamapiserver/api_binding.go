@@ -18,8 +18,15 @@ import (
 )
 
 type BindingAPI struct {
-	bindingCase *service.BindingCase
+	bindingCase service.BindingCaseInterface
 	logger      log.Logger
+}
+
+func NewBindingAPI(bindingCase service.BindingCaseInterface, logger log.Logger) *BindingAPI {
+	return &BindingAPI{
+		bindingCase: bindingCase,
+		logger:      logger,
+	}
 }
 
 // Get /api/v1/bindings

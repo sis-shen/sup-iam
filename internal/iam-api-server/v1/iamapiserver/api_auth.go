@@ -19,10 +19,19 @@ import (
 )
 
 type AuthAPI struct {
-	authCase service.AuthCase
-	userCase service.UserCase
+	authCase service.AuthCaseInterface
+	userCase service.UserCaseInterface
 	logger   log.Logger
 	jwt      jwt.Manager
+}
+
+func NewAuthAPI(logger log.Logger, jm jwt.Manager, authCase service.AuthCaseInterface, userCase service.UserCaseInterface) *AuthAPI {
+	return &AuthAPI{
+		authCase: authCase,
+		userCase: userCase,
+		logger:   logger,
+		jwt:      jm,
+	}
 }
 
 // Post /api/v1/auth/login

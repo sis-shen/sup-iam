@@ -24,6 +24,10 @@ type SecretAPI struct {
 	logger     log.Logger
 }
 
+func NewSecretAPI(secretCase service.SecretCaseInterface, logger log.Logger) *SecretAPI {
+	return &SecretAPI{secretCase, logger}
+}
+
 // Get /api/v1/secrets
 // 获取 Secret 列表
 func (api *SecretAPI) ApiV1SecretsGet(c *gin.Context) {
