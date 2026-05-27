@@ -11,49 +11,314 @@ package iamapiserver
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
+	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/service"
+	"github.com/sis-shen/sup-iam/internal/pkg/jwt"
+	"github.com/sis-shen/sup-iam/internal/pkg/log"
 )
 
 type AuthAPI struct {
+	authCase service.AuthCase
+	userCase service.UserCase
+	logger   log.Logger
+	jwt      jwt.Manager
 }
 
 // Post /api/v1/auth/login
 // 用户登录
 func (api *AuthAPI) ApiV1AuthLoginPost(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1AuthLoginPost")
+	logger.Info("Received login request")
+
+	// 1. 解析请求参数
+
+	req := LoginRequest{}
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		logger.Warnw("Error parsing body", "err", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+	reqModel := model.User{
+		Username:     req.Username,
+		Phone:        &req.Phone,
+		Email:        &req.Email,
+		PasswordHash: req.Password,
+	}
+
+	user, accessToken, refreshToken, err := api.authCase.Login(c, &reqModel)
+	if err != nil {
+		logger.Warnw("Fail in Login", "err", err)
+		errRsp := ErrorResponse{
+			Error:            LoginError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(200, errRsp)
+		return
+	}
+
+	resp := LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    api.jwt.GetTokenExpireTime().Microseconds(),
+	}
+
+	log.Infow("succeeded in login response", "userName", user.Username)
+	c.JSON(200, resp)
+
 }
 
 // Post /api/v1/auth/logout
 // 用户退出登录
 func (api *AuthAPI) ApiV1AuthLogoutPost(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1AuthLogoutPost")
+	logger.Info("Received Logout request")
+
+	err := api.authCase.Logout(c)
+	if err != nil {
+		logger.Warnw("Fail in Logout", "err", err)
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	rsp := LogoutResponse{
+		Success: true,
+		Message: "Logout success",
+	}
+
+	log.Infow("succeeded in logout")
+
+	c.JSON(200, rsp)
 }
 
 // Get /api/v1/auth/me
 // 获取用户信息
 func (api *AuthAPI) ApiV1AuthMeGet(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1AuthMeGet")
+	logger.Info("Received Me")
+
+	token := api.jwt.ExtractToken(c)
+	claims, err := api.jwt.ValidateToken(token)
+	if err != nil {
+		logger.Warnw("Fail to validate token", "err", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+	loggedAt := claims.IssuedAt.Time
+
+	userIDAny, exists := c.Get(UserIDKey)
+	if exists == false {
+		logger.Warnw("Fail in Me", "userID exists", exists)
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: "Failed to get user ID from context",
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	userID, ok := userIDAny.(string)
+	if !ok {
+		logger.Warnw("Fail in Me: fail to get user ID from string")
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: "Failed to get user ID from any type",
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	user, err := api.userCase.GetUserByID(c, userID)
+
+	if err != nil {
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+	resp := MeResponse{
+		Id:       int64(user.ID),
+		Username: user.Username,
+		Nickname: user.Nickname,
+		Phone:    user.Phone,
+		Email:    user.Email,
+		IsAdmin:  int32(user.IsAdmin),
+		IsEnable: int32(user.IsEnable),
+		Role:     "",
+		LoggedAt: &loggedAt,
+	}
+	c.JSON(200, resp)
 }
 
 // Post /api/v1/auth/password/change
 // 修改密码
 func (api *AuthAPI) ApiV1AuthPasswordChangePost(c *gin.Context) {
-	// Your handler implementation
+	logger := api.logger.WithValues("func", "ApiV1AuthPasswordChangePost")
+	logger.Info("Received Password Change request")
+
+	req := ChangePasswordRequest{}
+	if err := c.ShouldBindBodyWithJSON(&req); err != nil {
+		logger.Warnw("Error parsing body", "err", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	userIDAny, exists := c.Get(UserIDKey)
+	if exists == false {
+		logger.Warnw("Fail in Me", "userID exists", exists)
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: "Failed to get user ID from context",
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	userID, ok := userIDAny.(string)
+	if !ok {
+		logger.Warnw("Fail in Me: fail to get user ID from string")
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: "Failed to get user ID from any type",
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	user, err := api.userCase.GetUserByID(c, userID)
+	if err != nil {
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	err = api.userCase.VerifyPassword(req.OldPassword, user.PasswordHash)
+	if err != nil {
+		logger.Warnw("Wrong old password", "err", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(200, errRsp)
+		return
+	}
+
+	user.PasswordHash, err = api.userCase.HashPassword(req.NewPassword)
+	if err != nil {
+		logger.Warnw("Fail in hash Password", "err", err)
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
+	user, err = api.userCase.UpdateUser(c, user)
+	if err != nil {
+		logger.Warnw("Fail in update user", "err", err)
+		errRsp := ErrorResponse{
+			Error:            RepositoryError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+
 	c.JSON(200, gin.H{"status": "OK"})
 }
 
 // Post /api/v1/auth/refresh
 // 刷新 Token
 func (api *AuthAPI) ApiV1AuthRefreshPost(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1AuthRefreshPost")
+	logger.Info("Received Refresh request")
+	token := api.jwt.ExtractToken(c)
+	claims, err := api.jwt.ValidateToken(token)
+	if err != nil {
+		logger.Warnw("Fail to validate token", "err", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+	accessToken, refreshToken, err := api.authCase.RefreshToken(c, claims.UserID, claims.Username)
+	if err != nil {
+		logger.Warnw("Fail in refresh token", "err", err)
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+	rsp := LoginResponse{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    api.jwt.GetTokenExpireTime().Milliseconds(),
+	}
+	c.JSON(200, rsp)
 }
 
 // Post /api/v1/auth/register
 // 用户注册
 func (api *AuthAPI) ApiV1AuthRegisterPost(c *gin.Context) {
-	// Your handler implementation
-	c.JSON(200, gin.H{"status": "OK"})
+	logger := api.logger.WithValues("func", "ApiV1AuthRegisterPost")
+	logger.Info("Received Register request")
+	req := RegisterRequest{}
+	if err := c.ShouldBindBodyWith(&req, binding.JSON); err != nil {
+		logger.Warnw("Error parsing body", "err", err)
+		errRsp := ErrorResponse{
+			Error:            ParamParseError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(400, errRsp)
+		return
+	}
+
+	userModel := model.User{
+		Username:     req.Username,
+		PasswordHash: req.Password,
+		Email:        req.Email,
+		Phone:        req.Phone,
+	}
+
+	user, err := api.authCase.Register(c, &userModel)
+	if err != nil {
+		errRsp := ErrorResponse{
+			Error:            InternalError,
+			ErrorDescription: err.Error(),
+		}
+		c.JSON(500, errRsp)
+		return
+	}
+	resp := RegisterResponse{
+		Username: user.Username,
+		UserId:   int64(user.ID),
+	}
+	log.Infow("Succeed in Register", "user", user.Username)
+	c.JSON(200, resp)
 }
