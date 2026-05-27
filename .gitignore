@@ -2,4 +2,6 @@
 .settings
 salesforce.schema
 Referenced Packages
-cache
+
+/cache
+./cache
