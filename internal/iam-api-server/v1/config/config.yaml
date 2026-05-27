@@ -10,19 +10,32 @@ server:
   # 运行模式: debug/release/test
   # debug模式会输出详细日志，release模式会优化性能
   mode: "debug"
-  # 读取超时时间（秒）
-  read_timeout: 30
-  # 写入超时时间（秒）
-  write_timeout: 30
+  # 读取超时
+  read_timeout: 30s
+  # 写入超时
+  write_timeout: 30s
+  # 黑名单过期时间
+  black_list_ttl: 1h
 
 # ========== JWT配置 ==========
 jwt:
   # JWT签名密钥（生产环境务必修改并通过环境变量 IAM_JWT_SECRET_KEY 注入）
   secret_key: "your-super-secret-jwt-key-change-in-production"
-  # Access Token 过期时间（分钟）
-  access_token_expire_time: 60
-  # Refresh Token 过期时间（天）
-  refresh_token_expire_time: 7
+  # Access Token 过期时间
+  access_token_expire_time: 1h
+  # Refresh Token 过期时间
+  refresh_token_expire_time: 168h
+  # 用户ID在Token中的键名
+  user_id_key: "user_id"
+  # Token提取方式
+  token_lookup: "header:Authorization"
+  # JWT签发者
+  issuer: "iam-apiserver"
+  # JWT豁免路径
+  skip_paths:
+    - "/health"
+    - "/api/v1/auth/login"
+    - "/api/v1/auth/register"
 
 # ========== MySQL配置 ==========
 mysql:
@@ -36,6 +49,14 @@ mysql:
   password: ""
   # 数据库名称
   database_name: "iam"
+  # 最大空闲连接数
+  max_idle_conns: 10
+  # 最大打开连接数
+  max_open_conns: 100
+  # 连接最大存活时间
+  conn_max_lifetime: 1h
+  # 最大重试次数
+  max_retries: 3
 
 # ========== Redis配置 ==========
 redis:
@@ -47,3 +68,46 @@ redis:
   password: ""
   # Redis数据库编号
   database_name: 0
+  # 健康检查间隔
+  health_check_interval: 10s
+  # 连接池大小
+  pool_size: 10
+  # 最小空闲连接数
+  min_idle_conns: 5
+  # 最大空闲连接数
+  max_idle_conns: 10
+  # 连接最大空闲时间
+  conn_max_idle_time: 5m
+  # 连接最大存活时间
+  conn_max_lifetime: 1h
+  # 拨号超时
+  dial_timeout: 5s
+  # 读取超时
+  read_timeout: 3s
+  # 写入超时
+  write_timeout: 3s
+  # 连接池获取超时
+  pool_timeout: 4s
+
+# ========== 日志配置 ==========
+log:
+  # 日志级别: debug/info/warn/error/panic/fatal
+  level: "info"
+  # 日志输出格式: console/json
+  format: "console"
+  # 日志输出路径
+  output-paths:
+    - stdout
+  # 错误日志输出路径
+  error-output-paths:
+    - stderr
+  # 是否禁用 caller 信息
+  disable-caller: false
+  # 是否禁用堆栈跟踪
+  disable-stacktrace: false
+  # 是否启用颜色输出（仅 console 格式有效）
+  enable-color: false
+  # 是否为开发模式
+  development: false
+  # 日志记录器名称
+  name: ""

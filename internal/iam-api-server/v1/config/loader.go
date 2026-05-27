@@ -68,29 +68,59 @@ func LoadEnvVars(v *viper.Viper) {
 	// 敏感信息必须通过环境变量设置
 	envMappings := map[string]string{
 		// 服务器
-		"server.host":          "IAM_SERVER_HOST",
-		"server.port":          "IAM_SERVER_PORT",
-		"server.mode":          "IAM_SERVER_MODE",
-		"server.read_timeout":  "IAM_SERVER_READ_TIMEOUT",
-		"server.write_timeout": "IAM_SERVER_WRITE_TIMEOUT",
+		"server.host":           "IAM_SERVER_HOST",
+		"server.port":           "IAM_SERVER_PORT",
+		"server.mode":           "IAM_SERVER_MODE",
+		"server.read_timeout":   "IAM_SERVER_READ_TIMEOUT",
+		"server.write_timeout":  "IAM_SERVER_WRITE_TIMEOUT",
+		"server.black_list_ttl": "IAM_SERVER_BLACK_LIST_TTL",
 
 		// JWT
 		"jwt.secret_key":                "IAM_JWT_SECRET_KEY",
 		"jwt.access_token_expire_time":  "IAM_ACCESS_TOKEN_EXPIRE_TIME",
 		"jwt.refresh_token_expire_time": "IAM_REFRESH_TOKEN_EXPIRE_TIME",
+		"jwt.user_id_key":               "IAM_JWT_USER_ID_KEY",
+		"jwt.token_lookup":              "IAM_JWT_TOKEN_LOOKUP",
+		"jwt.issuer":                    "IAM_JWT_ISSUER",
+		"jwt.skip_paths":                "IAM_JWT_SKIP_PATHS",
 
 		// MySQL
-		"mysql.host":          "IAM_MYSQL_HOST",
-		"mysql.port":          "IAM_MYSQL_PORT",
-		"mysql.username":      "IAM_MYSQL_USERNAME",
-		"mysql.password":      "IAM_MYSQL_PASSWORD",
-		"mysql.database_name": "IAM_MYSQL_DATABASE_NAME",
+		"mysql.host":              "IAM_MYSQL_HOST",
+		"mysql.port":              "IAM_MYSQL_PORT",
+		"mysql.username":          "IAM_MYSQL_USERNAME",
+		"mysql.password":          "IAM_MYSQL_PASSWORD",
+		"mysql.database_name":     "IAM_MYSQL_DATABASE_NAME",
+		"mysql.max_idle_conns":    "IAM_MYSQL_MAX_IDLE_CONNS",
+		"mysql.max_open_conns":    "IAM_MYSQL_MAX_OPEN_CONNS",
+		"mysql.conn_max_lifetime": "IAM_MYSQL_CONN_MAX_LIFETIME",
+		"mysql.max_retries":       "IAM_MYSQL_MAX_RETRIES",
 
 		// Redis
-		"redis.host":          "IAM_REDIS_HOST",
-		"redis.port":          "IAM_REDIS_PORT",
-		"redis.password":      "IAM_REDIS_PASSWORD",
-		"redis.database_name": "IAM_REDIS_DATABASE_NAME",
+		"redis.host":                  "IAM_REDIS_HOST",
+		"redis.port":                  "IAM_REDIS_PORT",
+		"redis.password":              "IAM_REDIS_PASSWORD",
+		"redis.database_name":         "IAM_REDIS_DATABASE_NAME",
+		"redis.health_check_interval": "IAM_REDIS_HEALTH_CHECK_INTERVAL",
+		"redis.pool_size":             "IAM_REDIS_POOL_SIZE",
+		"redis.min_idle_conns":        "IAM_REDIS_MIN_IDLE_CONNS",
+		"redis.max_idle_conns":        "IAM_REDIS_MAX_IDLE_CONNS",
+		"redis.conn_max_idle_time":    "IAM_REDIS_CONN_MAX_IDLE_TIME",
+		"redis.conn_max_lifetime":     "IAM_REDIS_CONN_MAX_LIFETIME",
+		"redis.dial_timeout":          "IAM_REDIS_DIAL_TIMEOUT",
+		"redis.read_timeout":          "IAM_REDIS_READ_TIMEOUT",
+		"redis.write_timeout":         "IAM_REDIS_WRITE_TIMEOUT",
+		"redis.pool_timeout":          "IAM_REDIS_POOL_TIMEOUT",
+
+		// 日志
+		"log.level":              "IAM_LOG_LEVEL",
+		"log.format":             "IAM_LOG_FORMAT",
+		"log.output-paths":       "IAM_LOG_OUTPUT_PATHS",
+		"log.error-output-paths": "IAM_LOG_ERROR_OUTPUT_PATHS",
+		"log.disable-caller":     "IAM_LOG_DISABLE_CALLER",
+		"log.disable-stacktrace": "IAM_LOG_DISABLE_STACKTRACE",
+		"log.enable-color":       "IAM_LOG_ENABLE_COLOR",
+		"log.development":        "IAM_LOG_DEVELOPMENT",
+		"log.name":               "IAM_LOG_NAME",
 	}
 
 	for key, env := range envMappings {
@@ -105,12 +135,17 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.host", "0.0.0.0")
 	v.SetDefault("server.port", 8888)
 	v.SetDefault("server.mode", "debug")
-	v.SetDefault("server.read_timeout", 30)
-	v.SetDefault("server.write_timeout", 30)
+	v.SetDefault("server.read_timeout", "30s")
+	v.SetDefault("server.write_timeout", "30s")
+	v.SetDefault("server.black_list_ttl", "1h")
 
 	// JWT默认值
-	v.SetDefault("jwt.access_token_expire_time", 60)
-	v.SetDefault("jwt.refresh_token_expire_time", 7)
+	v.SetDefault("jwt.access_token_expire_time", "1h")
+	v.SetDefault("jwt.refresh_token_expire_time", "168h")
+	v.SetDefault("jwt.user_id_key", "user_id")
+	v.SetDefault("jwt.token_lookup", "header:Authorization")
+	v.SetDefault("jwt.issuer", "iam-apiserver")
+	v.SetDefault("jwt.skip_paths", []string{"/health", "/api/v1/auth/login", "/api/v1/auth/register"})
 
 	// MySQL默认值
 	v.SetDefault("mysql.host", "127.0.0.1")
@@ -118,11 +153,36 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("mysql.username", "root")
 	v.SetDefault("mysql.password", "")
 	v.SetDefault("mysql.database_name", "iam")
+	v.SetDefault("mysql.max_idle_conns", 10)
+	v.SetDefault("mysql.max_open_conns", 100)
+	v.SetDefault("mysql.conn_max_lifetime", "1h")
+	v.SetDefault("mysql.max_retries", 3)
 
 	// Redis默认值
 	v.SetDefault("redis.host", "127.0.0.1")
 	v.SetDefault("redis.port", 6379)
 	v.SetDefault("redis.database_name", 0)
+	v.SetDefault("redis.health_check_interval", "10s")
+	v.SetDefault("redis.pool_size", 10)
+	v.SetDefault("redis.min_idle_conns", 5)
+	v.SetDefault("redis.max_idle_conns", 10)
+	v.SetDefault("redis.conn_max_idle_time", "5m")
+	v.SetDefault("redis.conn_max_lifetime", "1h")
+	v.SetDefault("redis.dial_timeout", "5s")
+	v.SetDefault("redis.read_timeout", "3s")
+	v.SetDefault("redis.write_timeout", "3s")
+	v.SetDefault("redis.pool_timeout", "4s")
+
+	// 日志默认值
+	v.SetDefault("log.level", "info")
+	v.SetDefault("log.format", "console")
+	v.SetDefault("log.output-paths", []string{"stdout"})
+	v.SetDefault("log.error-output-paths", []string{"stderr"})
+	v.SetDefault("log.disable-caller", false)
+	v.SetDefault("log.disable-stacktrace", false)
+	v.SetDefault("log.enable-color", false)
+	v.SetDefault("log.development", false)
+	v.SetDefault("log.name", "")
 }
 
 func autoConfigFilePath() string {

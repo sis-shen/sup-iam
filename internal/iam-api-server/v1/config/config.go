@@ -1,38 +1,65 @@
 package config
 
+import (
+	"github.com/sis-shen/sup-iam/internal/pkg/log"
+	"time"
+)
+
 type AppConfig struct {
 	Server *ServerConfig `mapstructure:"server"`
 	JWT    *JWTConfig    `mapstructure:"jwt"`
 	MySQL  *MySQLConfig  `mapstructure:"mysql"`
 	Redis  *RedisConfig  `mapstructure:"redis"`
+	Log    *log.Options  `mapstructure:"log"`
 }
 
 // ServerConfig 服务器配置
 type ServerConfig struct {
-	Host         string `mapstructure:"host"`
-	Port         int    `mapstructure:"port"`
-	Mode         string `mapstructure:"mode"` // debug/release/test
-	ReadTimeout  int    `mapstructure:"read_timeout"`
-	WriteTimeout int    `mapstructure:"write_timeout"`
+	Host         string        `mapstructure:"host"`
+	Port         int           `mapstructure:"port"`
+	Mode         string        `mapstructure:"mode"` // debug/release/test
+	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout time.Duration `mapstructure:"write_timeout"`
+	BlackListTTL time.Duration `mapstructure:"black_list_ttl"`
 }
 
 type JWTConfig struct {
-	SecretKey              string `mapstructure:"secret_key"`
-	AcessTokenExpireTime   int    `mapstructure:"access_token_expire_time"`
-	RefreshTokenExpireTime int    `mapstructure:"refresh_token_expire_time"`
+	SecretKey              string        `mapstructure:"secret_key"`
+	AccessTokenExpireTime  time.Duration `mapstructure:"access_token_expire_time"`
+	RefreshTokenExpireTime time.Duration `mapstructure:"refresh_token_expire_time"`
+	UserIDKey              string        `mapstructure:"user_id_key"`
+	TokenLookup            string        `mapstructure:"token_lookup"`
+	Issuer                 string        `mapstructure:"issuer"`
+	SkipPaths              []string      `mapstructure:"skip_paths"`
 }
 
 type MySQLConfig struct {
-	Host         string `mapstructure:"host"`
-	Port         int    `mapstructure:"port"`
-	Username     string `mapstructure:"username"`
-	Password     string `mapstructure:"password"`
-	DatabaseName string `mapstructure:"database_name"`
+	Host            string        `mapstructure:"host"`
+	Port            int           `mapstructure:"port"`
+	Username        string        `mapstructure:"username"`
+	Password        string        `mapstructure:"password"`
+	DatabaseName    string        `mapstructure:"database_name"`
+	MaxIdleConns    int           `mapstructure:"max_idle_conns"`
+	MaxOpenConns    int           `mapstructure:"max_open_conns"`
+	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
+	MaxRetries      int           `mapstructure:"max_retries"`
 }
 
 type RedisConfig struct {
-	Host         string `mapstructure:"host"`
-	Port         int    `mapstructure:"port"`
-	Password     string `mapstructure:"password"`
-	DatabaseName string `mapstructure:"database_name"`
+	Host                string        `mapstructure:"host"`
+	Port                int           `mapstructure:"port"`
+	Password            string        `mapstructure:"password"`
+	DatabaseName        string        `mapstructure:"database_name"`
+	HealthCheckInterval time.Duration `mapstructure:"health_check_interval"`
+	//连接配置
+	PoolSize        int           `mapstructure:"pool_size"`
+	MinIdleConns    int           `mapstructure:"min_idle_conns"`
+	MaxIdleConns    int           `mapstructure:"max_idle_conns"`
+	ConnMaxIdleTime time.Duration `mapstructure:"conn_max_idle_time"`
+	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
+	// 超时配置
+	DialTimeout  time.Duration `mapstructure:"dial_timeout"`
+	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout time.Duration `mapstructure:"write_timeout"`
+	PoolTimeout  time.Duration `mapstructure:"pool_timeout"`
 }
