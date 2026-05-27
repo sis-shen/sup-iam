@@ -11,6 +11,9 @@ type UserRepository interface {
 	GetByUsername(ctx context.Context, username string) (*model.User, error)
 	GetByEmail(ctx context.Context, email string) (*model.User, error)
 	GetByPhone(ctx context.Context, phone string) (*model.User, error)
+	ExistsByUsername(ctx context.Context, username string) (bool, error)
+	ExistsByEmail(ctx context.Context, email string) (bool, error)
+	ExistsByPhone(ctx context.Context, phone string) (bool, error)
 	Update(ctx context.Context, user *model.User) (*model.User, error)
 	DeleteByID(ctx context.Context, id string) error
 	GetList(ctx context.Context, query PageQuery) (PageResult[*model.User], error)
