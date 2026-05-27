@@ -120,3 +120,29 @@ func (us *UserStore) GetList(ctx context.Context, query repository.PageQuery) (r
 
 	return result, nil
 }
+
+func (us *UserStore) ExistsByUsername(ctx context.Context, username string) (bool, error) {
+	var count int64
+	if err := us.db.WithContext(ctx).Model(&model.User{}).Where("username = ?", username).Count(&count).Error; err != nil {
+		return false, repoError(err)
+	}
+	return count > 0, nil
+}
+
+// ExistsByEmail 检查邮箱是否存在
+func (us *UserStore) ExistsByEmail(ctx context.Context, email string) (bool, error) {
+	var count int64
+	if err := us.db.WithContext(ctx).Model(&model.User{}).Where("email = ?", email).Count(&count).Error; err != nil {
+		return false, repoError(err)
+	}
+	return count > 0, nil
+}
+
+// ExistsByPhone 检查手机号是否存在
+func (us *UserStore) ExistsByPhone(ctx context.Context, phone string) (bool, error) {
+	var count int64
+	if err := us.db.WithContext(ctx).Model(&model.User{}).Where("phone = ?", phone).Count(&count).Error; err != nil {
+		return false, repoError(err)
+	}
+	return count > 0, nil
+}
