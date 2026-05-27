@@ -5,4 +5,5 @@ const (
 	RepositoryError  string = "RepositoryError"
 	IntOverFlowError string = "IntOverFlowError"
 	InternalError    string = "InternalError"
+	LoginError       string = "LoginError"
 )
