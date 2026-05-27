@@ -27,6 +27,10 @@ type AuthCase struct {
 	blackList cache.TokenBlackListInterface
 }
 
+func NewAuthCase(repo repository.UserRepository, hasher PasswordHasherInterface, jwt jwt.Manager, blackList cache.TokenBlackListInterface) *AuthCase {
+	return &AuthCase{repo, hasher, jwt, blackList}
+}
+
 func (ac *AuthCase) Register(ctx *gin.Context, user *model.User) (*model.User, error) {
 	// 1. 检查用户名是否已存在
 	exists, err := ac.repo.ExistsByUsername(ctx, user.Username)

@@ -6,7 +6,7 @@ import (
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/repository"
 )
 
-type BindingInterface interface {
+type BindingCaseInterface interface {
 	GetBindingListByUserID(ctx context.Context, id string, query repository.PageQuery) (repository.PageResult[*model.Binding], error)
 	DeleteBinding(ctx context.Context, id string) error
 	GetBindingById(ctx context.Context, id string) (*model.Binding, error)
@@ -17,7 +17,11 @@ type BindingCase struct {
 	repo repository.BindingRepository
 }
 
-var _ BindingInterface = (*BindingCase)(nil)
+func NewBindingCase(repo repository.BindingRepository) *BindingCase {
+	return &BindingCase{repo: repo}
+}
+
+var _ BindingCaseInterface = (*BindingCase)(nil)
 
 func (bc *BindingCase) GetBindingListByUserID(ctx context.Context, id string, query repository.PageQuery) (repository.PageResult[*model.Binding], error) {
 	return bc.repo.GetListByUserID(ctx, id, query)
