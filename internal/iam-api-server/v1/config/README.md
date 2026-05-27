@@ -4,7 +4,7 @@
 
 | 文件 | 作用 |
 |------|------|
-| `config.go` | 定义配置结构体 `AppConfig`，包含 Server、JWT、MySQL、Redis 四个子配置模块 |
+| `config.go` | 定义配置结构体 `AppConfig`，包含 Server、JWT、MySQL、Redis、Log 五个子配置模块 |
 | `loader.go` | 配置加载引擎，负责读取配置文件、环境变量、设置默认值及配置验证 |
 | `config.yaml` | 默认 YAML 配置文件（开发环境），含所有配置项的默认值和注释说明 |
 
@@ -30,11 +30,21 @@
 server:
   port: 8888
   mode: "release"
+  read_timeout: 30s
+  write_timeout: 30s
+  black_list_ttl: 1h
 
 jwt:
   secret_key: "your-secret-key"
-  access_token_expire_time: 60  # 单位：分钟
-  refresh_token_expire_time: 7  # 单位：天
+  access_token_expire_time: 1h
+  refresh_token_expire_time: 168h
+  user_id_key: "user_id"
+  token_lookup: "header:Authorization"
+  issuer: "iam-apiserver"
+  skip_paths:
+    - "/health"
+    - "/api/v1/auth/login"
+    - "/api/v1/auth/register"
 
 mysql:
   host: "127.0.0.1"
@@ -42,12 +52,39 @@ mysql:
   username: "root"
   password: "your-password"
   database_name: "iam"
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 1h
+  max_retries: 3
 
 redis:
   host: "127.0.0.1"
   port: 6379
   password: ""
   database_name: 0
+  health_check_interval: 10s
+  pool_size: 10
+  min_idle_conns: 5
+  max_idle_conns: 10
+  conn_max_idle_time: 5m
+  conn_max_lifetime: 1h
+  dial_timeout: 5s
+  read_timeout: 3s
+  write_timeout: 3s
+  pool_timeout: 4s
+
+log:
+  level: "info"
+  format: "console"
+  output-paths:
+    - stdout
+  error-output-paths:
+    - stderr
+  disable-caller: false
+  disable-stacktrace: false
+  enable-color: false
+  development: false
+  name: ""
 ```
 
 ### 方式二：环境变量（推荐用于生产环境）
@@ -60,6 +97,8 @@ set IAM_SERVER_PORT=8080
 set IAM_JWT_SECRET_KEY=my-production-secret-key
 set IAM_MYSQL_PASSWORD=my-db-password
 set IAM_REDIS_PASSWORD=my-redis-password
+set IAM_LOG_LEVEL=debug
+set IAM_LOG_FORMAT=json
 ```
 
 **Linux/macOS**
@@ -68,6 +107,8 @@ export IAM_SERVER_PORT=8080
 export IAM_JWT_SECRET_KEY=my-production-secret-key
 export IAM_MYSQL_PASSWORD=my-db-password
 export IAM_REDIS_PASSWORD=my-redis-password
+export IAM_LOG_LEVEL=debug
+export IAM_LOG_FORMAT=json
 ```
 
 ### 方式三：指定自定义配置文件路径
@@ -104,16 +145,21 @@ export IAM_CONFIG_FILE=/etc/iam/custom-config.yaml
 | `host` | `IAM_SERVER_HOST` | `0.0.0.0` | 监听地址 |
 | `port` | `IAM_SERVER_PORT` | `8888` | 监听端口 |
 | `mode` | `IAM_SERVER_MODE` | `debug` | 运行模式：`debug` / `release` / `test` |
-| `read_timeout` | `IAM_SERVER_READ_TIMEOUT` | `30` | 读取超时（秒） |
-| `write_timeout` | `IAM_SERVER_WRITE_TIMEOUT` | `30` | 写入超时（秒） |
+| `read_timeout` | `IAM_SERVER_READ_TIMEOUT` | `30s` | 读取超时 |
+| `write_timeout` | `IAM_SERVER_WRITE_TIMEOUT` | `30s` | 写入超时 |
+| `black_list_ttl` | `IAM_SERVER_BLACK_LIST_TTL` | `1h` | 黑名单过期时间 |
 
 ### JWT 配置（`jwt`）
 
 | 配置项 | 环境变量 | 默认值 | 说明 |
 |--------|---------|--------|------|
 | `secret_key` | `IAM_JWT_SECRET_KEY` | （无默认值） | JWT 签名密钥，**生产环境必须修改** |
-| `access_token_expire_time` | `IAM_ACCESS_TOKEN_EXPIRE_TIME` | `60` | Access Token 过期时间（分钟） |
-| `refresh_token_expire_time` | `IAM_REFRESH_TOKEN_EXPIRE_TIME` | `7` | Refresh Token 过期时间（天） |
+| `access_token_expire_time` | `IAM_ACCESS_TOKEN_EXPIRE_TIME` | `1h` | Access Token 过期时间 |
+| `refresh_token_expire_time` | `IAM_REFRESH_TOKEN_EXPIRE_TIME` | `168h` | Refresh Token 过期时间 |
+| `user_id_key` | `IAM_JWT_USER_ID_KEY` | `user_id` | 用户ID在Token中的键名 |
+| `token_lookup` | `IAM_JWT_TOKEN_LOOKUP` | `header:Authorization` | Token 提取方式 |
+| `issuer` | `IAM_JWT_ISSUER` | `iam-apiserver` | JWT 签发者 |
+| `skip_paths` | `IAM_JWT_SKIP_PATHS` | `["/health","/api/v1/auth/login","/api/v1/auth/register"]` | JWT 豁免路径列表 |
 
 ### MySQL 配置（`mysql`）
 
@@ -124,6 +170,10 @@ export IAM_CONFIG_FILE=/etc/iam/custom-config.yaml
 | `username` | `IAM_MYSQL_USERNAME` | `root` | 数据库用户名 |
 | `password` | `IAM_MYSQL_PASSWORD` | （空） | 数据库密码，**生产环境必须通过环境变量注入** |
 | `database_name` | `IAM_MYSQL_DATABASE_NAME` | `iam` | 数据库名称 |
+| `max_idle_conns` | `IAM_MYSQL_MAX_IDLE_CONNS` | `10` | 最大空闲连接数 |
+| `max_open_conns` | `IAM_MYSQL_MAX_OPEN_CONNS` | `100` | 最大打开连接数 |
+| `conn_max_lifetime` | `IAM_MYSQL_CONN_MAX_LIFETIME` | `1h` | 连接最大存活时间 |
+| `max_retries` | `IAM_MYSQL_MAX_RETRIES` | `3` | 最大重试次数 |
 
 ### Redis 配置（`redis`）
 
@@ -133,6 +183,30 @@ export IAM_CONFIG_FILE=/etc/iam/custom-config.yaml
 | `port` | `IAM_REDIS_PORT` | `6379` | Redis 端口 |
 | `password` | `IAM_REDIS_PASSWORD` | （空） | Redis 密码 |
 | `database_name` | `IAM_REDIS_DATABASE_NAME` | `0` | Redis 数据库编号 |
+| `health_check_interval` | `IAM_REDIS_HEALTH_CHECK_INTERVAL` | `10s` | 健康检查间隔 |
+| `pool_size` | `IAM_REDIS_POOL_SIZE` | `10` | 连接池大小 |
+| `min_idle_conns` | `IAM_REDIS_MIN_IDLE_CONNS` | `5` | 最小空闲连接数 |
+| `max_idle_conns` | `IAM_REDIS_MAX_IDLE_CONNS` | `10` | 最大空闲连接数 |
+| `conn_max_idle_time` | `IAM_REDIS_CONN_MAX_IDLE_TIME` | `5m` | 连接最大空闲时间 |
+| `conn_max_lifetime` | `IAM_REDIS_CONN_MAX_LIFETIME` | `1h` | 连接最大存活时间 |
+| `dial_timeout` | `IAM_REDIS_DIAL_TIMEOUT` | `5s` | 拨号超时 |
+| `read_timeout` | `IAM_REDIS_READ_TIMEOUT` | `3s` | 读取超时 |
+| `write_timeout` | `IAM_REDIS_WRITE_TIMEOUT` | `3s` | 写入超时 |
+| `pool_timeout` | `IAM_REDIS_POOL_TIMEOUT` | `4s` | 连接池获取超时 |
+
+### 日志配置（`log`）
+
+| 配置项 | 环境变量 | 默认值 | 说明 |
+|--------|---------|--------|------|
+| `level` | `IAM_LOG_LEVEL` | `info` | 日志级别：`debug` / `info` / `warn` / `error` / `panic` / `fatal` |
+| `format` | `IAM_LOG_FORMAT` | `console` | 输出格式：`console` / `json` |
+| `output-paths` | `IAM_LOG_OUTPUT_PATHS` | `["stdout"]` | 日志输出路径 |
+| `error-output-paths` | `IAM_LOG_ERROR_OUTPUT_PATHS` | `["stderr"]` | 错误日志输出路径 |
+| `disable-caller` | `IAM_LOG_DISABLE_CALLER` | `false` | 是否禁用 caller 信息 |
+| `disable-stacktrace` | `IAM_LOG_DISABLE_STACKTRACE` | `false` | 是否禁用堆栈跟踪 |
+| `enable-color` | `IAM_LOG_ENABLE_COLOR` | `false` | 是否启用颜色输出（仅 console 格式有效） |
+| `development` | `IAM_LOG_DEVELOPMENT` | `false` | 是否为开发模式 |
+| `name` | `IAM_LOG_NAME` | `""` | 日志记录器名称 |
 
 ---
 
