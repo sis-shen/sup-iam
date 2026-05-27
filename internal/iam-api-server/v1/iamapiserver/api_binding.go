@@ -203,7 +203,7 @@ func (api *BindingAPI) ApiV1BindingsPost(c *gin.Context) {
 
 	nowTime := time.Now()
 
-	modelSecret := model.Binding{
+	modelBinding := model.Binding{
 		SecretID:     uint64(req.SecretId),
 		PolicyID:     uint64(req.PolicyId),
 		Username:     req.Username,
@@ -211,10 +211,10 @@ func (api *BindingAPI) ApiV1BindingsPost(c *gin.Context) {
 		CreatedAt:    nowTime,
 	}
 
-	_, err := api.policyCase.CreatePolicy(c, &modelSecret)
+	binding, err := api.bindingCase.CreateBinding(c, &modelBinding)
 
 	if err != nil {
-		logger.Warnf("Error creating policy: %v", err)
+		logger.Warnf("Error creating binding: %v", err)
 		errRsp := ErrorResponse{
 			Error:            RepositoryError,
 			ErrorDescription: err.Error(),
@@ -223,5 +223,7 @@ func (api *BindingAPI) ApiV1BindingsPost(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, "Create policy successfully")
+	resp := ParseBindingModel(*binding)
+
+	c.JSON(200, resp)
 }
