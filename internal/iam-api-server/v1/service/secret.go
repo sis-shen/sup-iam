@@ -12,6 +12,7 @@ type SecretCaseInterface interface {
 	GetSecretList(ctx context.Context, id string, query repository.PageQuery) (repository.PageResult[*model.Secret], error)
 	DeleteSecret(ctx context.Context, id string) error
 	GetSecretByID(ctx context.Context, id string) (*model.Secret, error)
+	GetSecretByAK(ctx context.Context, ak string) (*model.Secret, error)
 	GetSecretBindingPolicy(ctx context.Context, id string, query repository.PageQuery) (repository.PageResult[*model.Policy], error)
 	UpdateSecret(ctx context.Context, model *model.Secret) (*model.Secret, error)
 	CreateSecret(ctx context.Context, secret *model.Secret) (*model.Secret, error)
@@ -42,6 +43,10 @@ func (sc *SecretCase) DeleteSecret(ctx context.Context, id string) error {
 
 func (sc *SecretCase) GetSecretByID(ctx context.Context, id string) (*model.Secret, error) {
 	return sc.repo.GetByID(ctx, id)
+}
+
+func (sc *SecretCase) GetSecretByAK(ctx context.Context, ak string) (*model.Secret, error) {
+	return sc.repo.GetByAK(ctx, ak)
 }
 
 func (sc *SecretCase) CreateSecret(ctx context.Context, secret *model.Secret) (*model.Secret, error) {

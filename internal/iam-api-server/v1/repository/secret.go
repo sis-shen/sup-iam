@@ -8,6 +8,7 @@ import (
 type SecretRepository interface {
 	Create(ctx context.Context, secret *model.Secret) (*model.Secret, error)
 	GetByID(ctx context.Context, id string) (*model.Secret, error)
+	GetByAK(ctx context.Context, ak string) (*model.Secret, error)
 	Update(ctx context.Context, secret *model.Secret) (*model.Secret, error)
 	DeleteByID(ctx context.Context, id string) error
 	GetListByUserID(ctx context.Context, id string, query PageQuery) (PageResult[*model.Secret], error)

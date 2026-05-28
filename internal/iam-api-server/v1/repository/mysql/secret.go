@@ -34,6 +34,14 @@ func (ss *SecretStore) GetByID(ctx context.Context, id string) (*model.Secret, e
 	return secret, nil
 }
 
+func (ss *SecretStore) GetByAK(ctx context.Context, ak string) (*model.Secret, error) {
+	secret := &model.Secret{}
+	if err := ss.db.WithContext(ctx).Where("ak = ?", ak).First(secret).Error; err != nil {
+		return nil, repoError(err)
+	}
+	return secret, nil
+}
+
 func (ss *SecretStore) Update(ctx context.Context, secret *model.Secret) (*model.Secret, error) {
 	if err := ss.db.WithContext(ctx).Save(secret).Error; err != nil {
 		return nil, repoError(err)
