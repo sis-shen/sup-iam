@@ -17,9 +17,8 @@ type AuthVerifyAPI struct {
 }
 
 // Post /auth/v1/verify
-// 鉴权验证 
+// 鉴权验证
 func (api *AuthVerifyAPI) VerifyRequest(c *gin.Context) {
 	// Your handler implementation
 	c.JSON(200, gin.H{"status": "OK"})
 }
-

@@ -11,7 +11,6 @@ package iamapiserver
 
 // VerifyResponse - 鉴权结果
 type VerifyResponse struct {
-
 	Allowed bool `json:"allowed,omitempty"`
 
 	Reason *string `json:"reason,omitempty"`

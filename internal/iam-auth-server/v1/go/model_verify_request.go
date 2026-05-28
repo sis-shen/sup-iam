@@ -11,7 +11,6 @@ package iamapiserver
 
 // VerifyRequest - 数据面请求鉴权
 type VerifyRequest struct {
-
 	AccessKey string `json:"access_key"`
 
 	Method string `json:"method"`
