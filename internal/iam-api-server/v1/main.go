@@ -14,12 +14,21 @@ import (
 	"fmt"
 	"github.com/redis/go-redis/v9"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/cache"
+	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/rpc"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/service"
 	"github.com/sis-shen/sup-iam/internal/pkg/jwt"
 	"github.com/sis-shen/sup-iam/internal/pkg/middleware"
+	pbv1 "github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v1"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	mysqllogger "gorm.io/gorm/logger"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/config"
@@ -29,6 +38,8 @@ import (
 )
 
 func main() {
+
+	//======== 1.加载配置
 	conf, err := config.Load("")
 	if err != nil {
 		fmt.Printf("配置文件加载失败: %v", err.Error())
@@ -41,6 +52,7 @@ func main() {
 		return
 	}
 
+	//====== 2. 加载组件
 	logger := log.New(conf.Log)
 	mysqlCli, err := initMySQLWithRetry(*conf.MySQL, logger)
 	if err != nil {
@@ -55,17 +67,104 @@ func main() {
 	jm := initJWTManager(*conf.JWT)
 	jwtMiddleWare := middleware.JWTAuthMiddleware(&jm, conf.JWT.SkipPaths)
 	blackList := cache.NewRedisTokenBlackList(redisCli, conf.Server.BlackListTTL)
+
+	// =======3. 创建errgroup管理
+	g, ctx := errgroup.WithContext(context.Background())
+
+	// ========= 4.初始化router
 	routes := initRoutes(logger, mysqlCli, jm, blackList)
-
 	logger.Infof("starting server on port %d", conf.Server.Port)
-
 	router := server.NewRouter(routes)
 	router.Use(jwtMiddleWare)
+
+	//======== 5.启动HTTPServer
 	address := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
-	err = router.Run(address)
-	if err != nil {
-		logger.Fatalf("fail to start server: %v", err)
+	httpServer := &http.Server{
+		Addr:    address,
+		Handler: router,
 	}
+
+	g.Go(func() error {
+		logger.Infof("starting http server on %s", address)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return fmt.Errorf("fail to start http server: %v", err)
+		}
+		return nil
+	})
+
+	// ==== 6.启动gRPC
+	grpcLis, err := net.Listen("tcp", fmt.Sprintf("%s:%d", conf.GrpcConfig.Host, conf.GrpcConfig.Port))
+	if err != nil {
+		logger.Errorf("grpc fail to list: %v", err)
+	}
+	grpcServer := initGrpcServer(mysqlCli)
+
+	g.Go(func() error {
+		logger.Infof("starting grpc server")
+		if err := grpcServer.Serve(grpcLis); err != nil {
+			return fmt.Errorf("fail to start grpc server: %v", err)
+		}
+		return nil
+	})
+
+	// ====== 7.监听系统退出信号
+	g.Go(func() error {
+		quit := make(chan os.Signal, 1)
+		signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+		select {
+		case sig := <-quit:
+			logger.Infof("receive signal: %v, start to graceful shutdown", sig)
+		case <-ctx.Done():
+			logger.Infof("unknown error in goroutine")
+		}
+
+		//关停server
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), conf.Server.GraceTimeout)
+		defer shutdownCancel()
+
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			logger.Errorf("fail to shutdown http server: %v", err)
+		}
+
+		//关停grpc
+		grpcServer.GracefulStop()
+		return nil
+	})
+
+	// 8.等待所有goroutine结束
+	if err := g.Wait(); err != nil {
+		logger.Fatalf("fail to wait: %v", err)
+	}
+
+	// 9. 关闭数据库连接
+	if sqlDB, err := mysqlCli.DB(); err != nil && sqlDB != nil {
+		err := sqlDB.Close()
+		if err != nil {
+			logger.Errorf("close mysql db in exception: %v", err)
+		}
+	}
+
+	err = redisCli.Close()
+	if err != nil {
+		logger.Errorf("close redis client in exception: %v", err)
+	}
+
+	logger.Infof("finish graceful shutdown")
+}
+
+func initGrpcServer(mysqlCli *gorm.DB) *grpc.Server {
+	if mysqlCli == nil {
+		return nil
+	}
+
+	grpcServer := grpc.NewServer()
+	secretStore := mysqlDB.NewSecretStore(mysqlCli)
+	secretCase := service.NewSecretCase(secretStore)
+
+	handler := rpc.NewAuthQueryHandler(secretCase)
+	pbv1.RegisterAuthQueryServiceServer(grpcServer, handler)
+
+	return grpcServer
 }
 
 func initRoutes(logger log.Logger, mysqlCli *gorm.DB, jm jwt.Manager, blackList cache.TokenBlackListInterface) server.ApiHandleFunctions {
