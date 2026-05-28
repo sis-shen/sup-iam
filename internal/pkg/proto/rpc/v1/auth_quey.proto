@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package proto.v1;
+
+import "model.proto";
+
+option go_package = "github.com/sis-shen/sup-iam/internal/proto/tpc/v1;pbv1";
+
+service AuthQueryService {
+  rpc GetSecretByAK(GetSecretByAKRequest) returns (GetSecretByAKResponse);
+
+  rpc GetPolicyBySecretID(GetPolicyBySecretIDRequest) returns (GetPolicyBySecretIDResponse);
+}
+
+message GetSecretByAKRequest {
+  string access_key = 1;
+}
+
+message GetSecretByAKResponse {
+  Secret secret = 1;
+}
+
+message GetPolicyBySecretIDRequest {
+  string secret_id = 1;
+}
+
+message GetPolicyBySecretIDResponse {
+  repeated Policy policy_list = 1;
+}
