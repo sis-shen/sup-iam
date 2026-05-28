@@ -32,6 +32,7 @@ func (bc *BindingCase) GetBindingById(ctx context.Context, id string) (*model.Bi
 }
 
 func (bc *BindingCase) CreateBinding(ctx context.Context, binding *model.Binding) (*model.Binding, error) {
+	// TODO 约束Binding数量
 	return bc.repo.Create(ctx, binding)
 }
 
