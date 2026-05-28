@@ -4,7 +4,7 @@
 
 | 文件 | 作用 |
 |------|------|
-| `config.go` | 定义配置结构体 `AppConfig`，包含 Server、JWT、MySQL、Redis、Log 五个子配置模块 |
+| `config.go` | 定义配置结构体 `AppConfig`，包含 Server、JWT、MySQL、Redis、gRPC、Log 六个子配置模块 |
 | `loader.go` | 配置加载引擎，负责读取配置文件、环境变量、设置默认值及配置验证 |
 | `config.yaml` | 默认 YAML 配置文件（开发环境），含所有配置项的默认值和注释说明 |
 
@@ -148,6 +148,7 @@ export IAM_CONFIG_FILE=/etc/iam/custom-config.yaml
 | `read_timeout` | `IAM_SERVER_READ_TIMEOUT` | `30s` | 读取超时 |
 | `write_timeout` | `IAM_SERVER_WRITE_TIMEOUT` | `30s` | 写入超时 |
 | `black_list_ttl` | `IAM_SERVER_BLACK_LIST_TTL` | `1h` | 黑名单过期时间 |
+| `grace_timeout` | `IAM_SERVER_GRACE_TIMEOUT` | `10s` | 优雅关闭超时 |
 
 ### JWT 配置（`jwt`）
 
@@ -160,6 +161,15 @@ export IAM_CONFIG_FILE=/etc/iam/custom-config.yaml
 | `token_lookup` | `IAM_JWT_TOKEN_LOOKUP` | `header:Authorization` | Token 提取方式 |
 | `issuer` | `IAM_JWT_ISSUER` | `iam-apiserver` | JWT 签发者 |
 | `skip_paths` | `IAM_JWT_SKIP_PATHS` | `["/health","/api/v1/auth/login","/api/v1/auth/register"]` | JWT 豁免路径列表 |
+
+### gRPC 配置（`grpc`）
+
+| 配置项 | 环境变量 | 默认值 | 说明 |
+|--------|---------|--------|------|
+| `host` | `IAM_GRPC_HOST` | `0.0.0.0` | 监听地址 |
+| `port` | `IAM_GRPC_PORT` | `9090` | 监听端口 |
+| `read_timeout` | `IAM_GRPC_READ_TIMEOUT` | `30s` | 读取超时 |
+| `write_timeout` | `IAM_GRPC_WRITE_TIMEOUT` | `30s` | 写入超时 |
 
 ### MySQL 配置（`mysql`）
 

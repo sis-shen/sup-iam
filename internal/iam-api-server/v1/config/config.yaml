@@ -16,6 +16,8 @@ server:
   write_timeout: 30s
   # 黑名单过期时间
   black_list_ttl: 1h
+  # 优雅关闭超时
+  grace_timeout: 10s
 
 # ========== JWT配置 ==========
 jwt:
@@ -88,6 +90,17 @@ redis:
   write_timeout: 3s
   # 连接池获取超时
   pool_timeout: 4s
+
+# ========== gRPC配置 ==========
+grpc:
+  # gRPC服务监听地址
+  host: "0.0.0.0"
+  # gRPC服务监听端口（可通过环境变量 IAM_GRPC_PORT 覆盖）
+  port: 9090
+  # 读取超时
+  read_timeout: 30s
+  # 写入超时
+  write_timeout: 30s
 
 # ========== 日志配置 ==========
 log:

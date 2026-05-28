@@ -6,11 +6,12 @@ import (
 )
 
 type AppConfig struct {
-	Server *ServerConfig `mapstructure:"server"`
-	JWT    *JWTConfig    `mapstructure:"jwt"`
-	MySQL  *MySQLConfig  `mapstructure:"mysql"`
-	Redis  *RedisConfig  `mapstructure:"redis"`
-	Log    *log.Options  `mapstructure:"log"`
+	Server     *ServerConfig `mapstructure:"server"`
+	JWT        *JWTConfig    `mapstructure:"jwt"`
+	MySQL      *MySQLConfig  `mapstructure:"mysql"`
+	Redis      *RedisConfig  `mapstructure:"redis"`
+	Log        *log.Options  `mapstructure:"log"`
+	GrpcConfig *GrpcConfig   `mapstructure:"grpc"`
 }
 
 // ServerConfig 服务器配置
@@ -21,6 +22,7 @@ type ServerConfig struct {
 	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout time.Duration `mapstructure:"write_timeout"`
 	BlackListTTL time.Duration `mapstructure:"black_list_ttl"`
+	GraceTimeout time.Duration `mapstructure:"grace_timeout"`
 }
 
 type JWTConfig struct {
@@ -62,4 +64,11 @@ type RedisConfig struct {
 	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout time.Duration `mapstructure:"write_timeout"`
 	PoolTimeout  time.Duration `mapstructure:"pool_timeout"`
+}
+
+type GrpcConfig struct {
+	Host         string        `mapstructure:"host"`
+	Port         int           `mapstructure:"port"`
+	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout time.Duration `mapstructure:"write_timeout"`
 }

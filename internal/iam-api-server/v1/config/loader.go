@@ -74,6 +74,7 @@ func LoadEnvVars(v *viper.Viper) {
 		"server.read_timeout":   "IAM_SERVER_READ_TIMEOUT",
 		"server.write_timeout":  "IAM_SERVER_WRITE_TIMEOUT",
 		"server.black_list_ttl": "IAM_SERVER_BLACK_LIST_TTL",
+		"server.grace_timeout":  "IAM_SERVER_GRACE_TIMEOUT",
 
 		// JWT
 		"jwt.secret_key":                "IAM_JWT_SECRET_KEY",
@@ -111,6 +112,12 @@ func LoadEnvVars(v *viper.Viper) {
 		"redis.write_timeout":         "IAM_REDIS_WRITE_TIMEOUT",
 		"redis.pool_timeout":          "IAM_REDIS_POOL_TIMEOUT",
 
+		// gRPC
+		"grpc.host":          "IAM_GRPC_HOST",
+		"grpc.port":          "IAM_GRPC_PORT",
+		"grpc.read_timeout":  "IAM_GRPC_READ_TIMEOUT",
+		"grpc.write_timeout": "IAM_GRPC_WRITE_TIMEOUT",
+
 		// 日志
 		"log.level":              "IAM_LOG_LEVEL",
 		"log.format":             "IAM_LOG_FORMAT",
@@ -138,6 +145,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.read_timeout", "30s")
 	v.SetDefault("server.write_timeout", "30s")
 	v.SetDefault("server.black_list_ttl", "1h")
+	v.SetDefault("server.grace_timeout", "10s")
 
 	// JWT默认值
 	v.SetDefault("jwt.access_token_expire_time", "1h")
@@ -172,6 +180,12 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("redis.read_timeout", "3s")
 	v.SetDefault("redis.write_timeout", "3s")
 	v.SetDefault("redis.pool_timeout", "4s")
+
+	// gRPC默认值
+	v.SetDefault("grpc.host", "0.0.0.0")
+	v.SetDefault("grpc.port", 9090)
+	v.SetDefault("grpc.read_timeout", "30s")
+	v.SetDefault("grpc.write_timeout", "30s")
 
 	// 日志默认值
 	v.SetDefault("log.level", "info")
