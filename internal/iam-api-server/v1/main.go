@@ -88,7 +88,6 @@ func main() {
 
 	// ========= 4.初始化router
 	routes := initRoutes(logger, mysqlCli, jm, blackList)
-	logger.Infof("starting server on port %d", conf.Server.Port)
 	router := server.NewRouter(routes)
 	router.Use(jwtMiddleWare)
 
