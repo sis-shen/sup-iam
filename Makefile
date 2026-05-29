@@ -75,9 +75,6 @@ docker-push-%:
 clean-%:
 	@$(MAKE) -C cmd/$* clean
 
-run-%:
-	@$(MAKE) -C cmd/$* run
-
 # ========== 全局命令 ==========
 .PHONY: tidy
 tidy: ## 整理依赖
