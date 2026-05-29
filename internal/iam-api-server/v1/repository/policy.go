@@ -1,5 +1,7 @@
 package repository
 
+//go:generate mockgen -destination=./mock/policy_repo_mock.go -package=mock . PolicyRepository
+
 import (
 	"context"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"

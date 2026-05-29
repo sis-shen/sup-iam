@@ -1,5 +1,7 @@
 package service
 
+//go:generate mockgen -destination=./mock/secret_case_mock.go -package=mock . SecretCaseInterface
+
 import (
 	"context"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"

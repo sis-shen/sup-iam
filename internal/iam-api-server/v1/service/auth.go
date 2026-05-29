@@ -1,5 +1,7 @@
 package service
 
+//go:generate mockgen -destination=./mock/auth_case_mock.go -package=mock . AuthCaseInterface
+
 import (
 	"errors"
 	"fmt"

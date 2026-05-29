@@ -1,5 +1,7 @@
 package rpc
 
+//go:generate mockgen -destination=./mock/rpc_client_mock.go -package=mock . RpcClientInterface
+
 import (
 	"context"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
