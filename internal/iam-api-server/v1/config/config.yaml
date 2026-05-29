@@ -14,6 +14,8 @@ server:
   read_timeout: 30s
   # 写入超时
   write_timeout: 30s
+  # 空闲超时
+  idle_timeout: 120s
   # 黑名单过期时间
   black_list_ttl: 1h
   # 优雅关闭超时

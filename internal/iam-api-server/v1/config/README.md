@@ -32,6 +32,7 @@ server:
   mode: "release"
   read_timeout: 30s
   write_timeout: 30s
+  idle_timeout: 120s
   black_list_ttl: 1h
 
 jwt:
@@ -147,6 +148,7 @@ export IAM_CONFIG_FILE=/etc/iam/custom-config.yaml
 | `mode` | `IAM_SERVER_MODE` | `debug` | 运行模式：`debug` / `release` / `test` |
 | `read_timeout` | `IAM_SERVER_READ_TIMEOUT` | `30s` | 读取超时 |
 | `write_timeout` | `IAM_SERVER_WRITE_TIMEOUT` | `30s` | 写入超时 |
+| `idle_timeout` | `IAM_SERVER_IDLE_TIMEOUT` | `120s` | 空闲超时 |
 | `black_list_ttl` | `IAM_SERVER_BLACK_LIST_TTL` | `1h` | 黑名单过期时间 |
 | `grace_timeout` | `IAM_SERVER_GRACE_TIMEOUT` | `10s` | 优雅关闭超时 |
 
@@ -168,8 +170,6 @@ export IAM_CONFIG_FILE=/etc/iam/custom-config.yaml
 |--------|---------|--------|------|
 | `host` | `IAM_GRPC_HOST` | `0.0.0.0` | 监听地址 |
 | `port` | `IAM_GRPC_PORT` | `9090` | 监听端口 |
-| `read_timeout` | `IAM_GRPC_READ_TIMEOUT` | `30s` | 读取超时 |
-| `write_timeout` | `IAM_GRPC_WRITE_TIMEOUT` | `30s` | 写入超时 |
 
 ### MySQL 配置（`mysql`）
 
