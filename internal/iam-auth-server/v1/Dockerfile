@@ -12,6 +12,8 @@ RUN go env -w GOPROXY=https://goproxy.cn,direct
 COPY go.mod go.sum .
 RUN go mod download
 
+COPY internal/iam-api-server/v1/model ./internal/iam-api-server/v1/model
+
 WORKDIR /go/github.com/sis-shen/sup-iam/${PKG_PATH}
 
 COPY ${PKG_PATH}/keys ./keys
@@ -21,9 +23,7 @@ COPY ${PKG_PATH}/proto ./proto
 
 WORKDIR /go/github.com/sis-shen/sup-iam/${SERVICE_PATH}
 
-COPY internal/iam-api-server/v1/model ./model
 COPY ${SERVICE_PATH}/rpc ./rpc
-COPY ${SERVICE_PATH}/repository ./repository
 COPY ${SERVICE_PATH}/service ./service
 COPY ${SERVICE_PATH}/config ./config
 COPY ${SERVICE_PATH}/main.go .
