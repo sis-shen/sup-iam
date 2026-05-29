@@ -26,6 +26,7 @@ docker-build: ## 构建 Docker 镜像
 	pwd && \
 	docker build \
 		-t $(DOCKER_IMAGE):$(DOCKER_TAG) \
+		-t $(DOCKER_IMAGE):latest \
 		-f $(SERVICE_PATH)/Dockerfile \
 		.
 
