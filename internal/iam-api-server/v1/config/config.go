@@ -21,6 +21,7 @@ type ServerConfig struct {
 	Mode         string        `mapstructure:"mode"` // debug/release/test
 	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout time.Duration `mapstructure:"write_timeout"`
+	IdleTimeout  time.Duration `mapstructure:"idle_timeout"`
 	BlackListTTL time.Duration `mapstructure:"black_list_ttl"`
 	GraceTimeout time.Duration `mapstructure:"grace_timeout"`
 }
@@ -67,8 +68,6 @@ type RedisConfig struct {
 }
 
 type GrpcConfig struct {
-	Host         string        `mapstructure:"host"`
-	Port         int           `mapstructure:"port"`
-	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
-	WriteTimeout time.Duration `mapstructure:"write_timeout"`
+	Host string `mapstructure:"host"`
+	Port int    `mapstructure:"port"`
 }
