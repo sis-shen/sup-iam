@@ -1,0 +1,158 @@
+# IAM Auth Server 配置
+
+## 目录结构
+
+| 文件 | 作用 |
+|------|------|
+| `config.go` | 定义配置结构体 `Config`，包含 Server、gRPC、Log 三个子配置模块 |
+| `loader.go` | 配置加载引擎，负责读取配置文件、环境变量、设置默认值及配置验证 |
+| `config.yaml` | 默认 YAML 配置文件（开发环境），含所有配置项的默认值和注释说明 |
+
+---
+
+## 配置框架
+
+使用 **[spf13/viper](https://github.com/spf13/viper)** v1.21.0 作为配置管理库。Viper 支持多层级配置源，按优先级从低到高排列：
+
+1. **默认值** — Go 代码中硬编码的默认值（`setDefaults` 函数）
+2. **配置文件** — YAML 格式的配置文件
+3. **环境变量** — 以 `IAM_` 为前缀的环境变量（优先级最高）
+
+---
+
+## 配置方式
+
+### 方式一：修改配置文件
+
+直接编辑 `config.yaml`，修改对应配置项即可：
+
+```yaml
+server:
+  host: "0.0.0.0"
+  port: 8889
+  mode: "debug"
+  read_timeout: 30s
+  write_timeout: 30s
+  idle_timeout: 120s
+  grace_timeout: 10s
+
+grpc:
+  host: "127.0.0.1"
+  port: 9090
+
+log:
+  level: "info"
+  format: "console"
+  output-paths:
+    - stdout
+  error-output-paths:
+    - stderr
+  disable-caller: false
+  disable-stacktrace: false
+  enable-color: false
+  development: false
+  name: ""
+```
+
+### 方式二：环境变量（推荐用于生产环境）
+
+所有配置项均可通过 `IAM_` 前缀的环境变量覆盖，支持按配置层级自动映射（Viper 自动将 `server.host` 映射到 `IAM_SERVER_HOST`）：
+
+**Windows (cmd)**
+```cmd
+set IAM_SERVER_PORT=8080
+set IAM_GRPC_HOST=192.168.1.100
+```
+
+**Linux/macOS**
+```bash
+export IAM_SERVER_PORT=8080
+export IAM_GRPC_HOST=192.168.1.100
+```
+
+### 方式三：指定自定义配置文件路径
+
+```bash
+export IAM_CONFIG_FILE=/etc/iam/custom-config.yaml
+```
+
+### 方式四：按环境自动加载
+
+设置环境变量 `IAM_ENV` 或 `GO_ENV` 后，加载器会自动搜索对应环境的配置文件：
+
+| 环境变量值 | 加载的文件 |
+|------------|-----------|
+| `production` / `prod` | `config.prod.yaml` |
+| `development` / `dev` | `config.dev.yaml` |
+| `test` | `config.test.yaml` |
+| 未设置或其他值 | `config.yaml` |
+
+配置文件搜索路径顺序：
+1. `.`（当前工作目录）
+2. `config/`
+3. `../config/`
+4. `/etc/iam/`
+
+---
+
+## 配置项完整说明
+
+### 服务器配置（`server`）
+
+| 配置项 | 环境变量 | 默认值 | 说明 |
+|--------|---------|--------|------|
+| `host` | `IAM_SERVER_HOST` | `0.0.0.0` | 监听地址 |
+| `port` | `IAM_SERVER_PORT` | `8889` | 监听端口 |
+| `mode` | `IAM_SERVER_MODE` | `debug` | 运行模式：`debug` / `release` / `test` |
+| `read_timeout` | `IAM_SERVER_READ_TIMEOUT` | `30s` | 读取超时 |
+| `write_timeout` | `IAM_SERVER_WRITE_TIMEOUT` | `30s` | 写入超时 |
+| `idle_timeout` | `IAM_SERVER_IDLE_TIMEOUT` | `120s` | 空闲超时 |
+| `grace_timeout` | `IAM_SERVER_GRACE_TIMEOUT` | `10s` | 优雅关闭超时 |
+
+### gRPC 配置（`grpc`）
+
+| 配置项 | 环境变量 | 默认值 | 说明 |
+|--------|---------|--------|------|
+| `host` | `IAM_GRPC_HOST` | `127.0.0.1` | IAM API Server gRPC 地址 |
+| `port` | `IAM_GRPC_PORT` | `9090` | IAM API Server gRPC 端口 |
+
+### 日志配置（`log`）
+
+| 配置项 | 环境变量 | 默认值 | 说明 |
+|--------|---------|--------|------|
+| `level` | `IAM_LOG_LEVEL` | `info` | 日志级别：`debug` / `info` / `warn` / `error` / `panic` / `fatal` |
+| `format` | `IAM_LOG_FORMAT` | `console` | 输出格式：`console` / `json` |
+| `output-paths` | `IAM_LOG_OUTPUT_PATHS` | `["stdout"]` | 日志输出路径 |
+| `error-output-paths` | `IAM_LOG_ERROR_OUTPUT_PATHS` | `["stderr"]` | 错误日志输出路径 |
+| `disable-caller` | `IAM_LOG_DISABLE_CALLER` | `false` | 是否禁用 caller 信息 |
+| `disable-stacktrace` | `IAM_LOG_DISABLE_STACKTRACE` | `false` | 是否禁用堆栈跟踪 |
+| `enable-color` | `IAM_LOG_ENABLE_COLOR` | `false` | 是否启用颜色输出（仅 console 格式有效） |
+| `development` | `IAM_LOG_DEVELOPMENT` | `false` | 是否为开发模式 |
+| `name` | `IAM_LOG_NAME` | `""` | 日志记录器名称 |
+
+---
+
+## 配置验证规则
+
+加载配置时，`validateConfig` 函数会执行以下校验：
+
+- `server.port`、`grpc.port` — 必须在 1～65535 范围内
+- `server.mode` — 必须是 `debug`、`release` 或 `test` 之一
+
+---
+
+## 配置加载流程
+
+```
+Load(configPath)
+  ├── 设置默认值 (setDefaults)
+  ├── 加载配置文件 (LoadConfigFile)
+  │     ├── 自动检测路径 (autoConfigFilePath)
+  │     │     ├── 优先使用 IAM_CONFIG_FILE 环境变量
+  │     │     ├── 根据 IAM_ENV / GO_ENV 选择配置文件名
+  │     │     └── 按路径顺序搜索配置文件
+  │     └── 解析 YAML 到 Viper
+  ├── 绑定环境变量 (IAM_ 前缀)
+  ├── 解组到 Config 结构体 (Unmarshal)
+  └── 配置验证 (validateConfig)
+```

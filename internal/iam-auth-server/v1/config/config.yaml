@@ -1,0 +1,50 @@
+# IAM Auth Server 配置文件
+# 部署相关配置建议通过环境变量覆盖
+
+# ========== 服务器配置 ==========
+server:
+  # 服务器监听地址
+  host: "0.0.0.0"
+  # 服务器监听端口（可通过环境变量 IAM_SERVER_PORT 覆盖）
+  port: 8889
+  # 运行模式: debug/release/test
+  # debug模式会输出详细日志，release模式会优化性能
+  mode: "debug"
+  # 读取超时
+  read_timeout: 30s
+  # 写入超时
+  write_timeout: 30s
+  # 空闲超时
+  idle_timeout: 120s
+  # 优雅关闭超时
+  grace_timeout: 10s
+
+# ========== gRPC配置 ==========
+grpc:
+  # gRPC服务端地址（IAM API Server 的 gRPC 地址）
+  host: "127.0.0.1"
+  # gRPC服务端端口（可通过环境变量 IAM_GRPC_PORT 覆盖）
+  port: 9090
+
+# ========== 日志配置 ==========
+log:
+  # 日志级别: debug/info/warn/error/panic/fatal
+  level: "info"
+  # 日志输出格式: console/json
+  format: "console"
+  # 日志输出路径
+  output-paths:
+    - stdout
+  # 错误日志输出路径
+  error-output-paths:
+    - stderr
+  # 是否禁用 caller 信息
+  disable-caller: false
+  # 是否禁用堆栈跟踪
+  disable-stacktrace: false
+  # 是否启用颜色输出（仅 console 格式有效）
+  enable-color: false
+  # 是否为开发模式
+  development: false
+  # 日志记录器名称
+  name: ""
