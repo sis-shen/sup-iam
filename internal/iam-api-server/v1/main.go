@@ -19,6 +19,7 @@ import (
 	"github.com/sis-shen/sup-iam/internal/pkg/jwt"
 	"github.com/sis-shen/sup-iam/internal/pkg/middleware"
 	pbv1 "github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v1"
+	"github.com/spf13/pflag"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"gorm.io/driver/mysql"
@@ -37,7 +38,21 @@ import (
 	"github.com/sis-shen/sup-iam/internal/pkg/log"
 )
 
+var (
+	Version    string
+	BuildTime  string
+	CommitHash string
+)
+
 func main() {
+	var showVersion bool
+	pflag.BoolVarP(&showVersion, "version", "v", false, "show version")
+	pflag.Parse()
+	if showVersion {
+		//显示版本信息后退出
+		fmt.Printf("Version: %s\nBuildTime: %s\nCommitHash: %s\n", Version, BuildTime, CommitHash)
+		return
+	}
 
 	//======== 1.加载配置
 	conf, err := config.Load("")
