@@ -94,8 +94,11 @@ func main() {
 	//======== 5.启动HTTPServer
 	address := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
 	httpServer := &http.Server{
-		Addr:    address,
-		Handler: router,
+		Addr:         address,
+		Handler:      router,
+		ReadTimeout:  conf.Server.ReadTimeout,
+		WriteTimeout: conf.Server.WriteTimeout,
+		IdleTimeout:  conf.Server.IdleTimeout,
 	}
 
 	g.Go(func() error {
