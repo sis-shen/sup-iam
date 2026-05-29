@@ -2,8 +2,33 @@
 export DOCKER_REGISTRY ?= ghcr.io/sis-shen
 export DOCKER_NAMESPACE ?= supdriver
 export VERSION ?= 1.0.0
+
+# Go 版本要求
+GO_REQUIRED_MAJOR ?= 1
+GO_REQUIRED_MINOR ?= 25  # 要求 Go 1.25+
+
 # 服务列表（按依赖顺序，可选）
 SERVICES = iam-api-server
+
+# ========== 版本检查函数 ==========
+define check-go-version
+    @echo "检查 Go 版本..."
+    @$(eval GO_VERSION := $(shell go version | grep -o 'go[0-9]\+\.[0-9]\+' | sed 's/go//'))
+    @$(eval GO_MAJOR := $(shell echo $(GO_VERSION) | cut -d. -f1))
+    @$(eval GO_MINOR := $(shell echo $(GO_VERSION) | cut -d. -f2))
+    @if [ -z "$(GO_VERSION)" ]; then \
+        echo " 错误: 未检测到 Go 环境，请先安装 Go"; \
+        exit 1; \
+    fi
+    @if [ $(GO_MAJOR) -lt $(GO_REQUIRED_MAJOR) ] || \
+       ([ $(GO_MAJOR) -eq $(GO_REQUIRED_MAJOR) ] && [ $(GO_MINOR) -lt $(GO_REQUIRED_MINOR) ]); then \
+        echo " 错误: Go 版本 $(GO_VERSION) 低于要求的 $(GO_REQUIRED_MAJOR).$(GO_REQUIRED_MINOR)"; \
+        echo "   请升级 Go: gvm install go1.25.0 && gvm use go1.25.0"; \
+        exit 1; \
+    else \
+        echo " Go 版本: $(GO_VERSION) (满足要求)"; \
+    fi
+endef
 
 # ========== 默认目标 ==========
 .PHONY: help
@@ -15,10 +40,14 @@ help: ## 显示帮助信息
 
 # ========== 所有服务通用 ==========
 .PHONY: all
-all: tidy fmt vet test build ## 执行所有（本地构建）
+all: check-go tidy fmt vet test build ## 执行所有（本地构建）
+
+.PHONY: check-go
+check-go: ## 检查 Go 版本
+	$(call check-go-version)
 
 .PHONY: build
-build: $(foreach s,$(SERVICES),build-$(s)) ## 构建所有服务
+build: check-go $(foreach s,$(SERVICES),build-$(s)) ## 构建所有服务
 
 .PHONY: docker-build
 docker-build: $(foreach s,$(SERVICES),docker-build-$(s)) ## 构建所有 Docker 镜像
