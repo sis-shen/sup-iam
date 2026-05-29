@@ -52,6 +52,10 @@ build: check-go $(foreach s,$(SERVICES),build-$(s)) ## 构建所有服务
 .PHONY: docker-build
 docker-build: $(foreach s,$(SERVICES),docker-build-$(s)) ## 构建所有 Docker 镜像
 
+.PHONY: docker-checkversion
+docker-checkversion: $(foreach s,$(SERVICES),docker-checkversion-$(s))## 检查 Docker 镜像版本
+
+
 .PHONY: docker-push
 docker-push: $(foreach s,$(SERVICES),docker-push-$(s)) ## 推送所有镜像
 
@@ -68,12 +72,18 @@ docker-build-%:
 	@echo " 构建 Docker 镜像 $*..."
 	@$(MAKE) -C cmd/$* docker-build
 
+docker-checkversion-%:
+	@echo " 检查 Docker 镜像 $* 版本..."
+	@$(MAKE) -C cmd/$* docker-checkversion
+
 docker-push-%:
 	@echo " 推送镜像 $*..."
 	@$(MAKE) -C cmd/$* docker-push
 
 clean-%:
 	@$(MAKE) -C cmd/$* clean
+
+
 
 # ========== 全局命令 ==========
 .PHONY: tidy

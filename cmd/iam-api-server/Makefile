@@ -7,6 +7,13 @@ ROOT_PATH = $(CURDIR)/../..
 DOCKER_IMAGE = $(DOCKER_REGISTRY)/$(DOCKER_NAMESPACE)/$(APP_NAME)
 DOCKER_TAG ?= $(VERSION)
 
+COMMIT_HASH ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
+BUILD_TIME ?= $(shell date -u '+%Y-%m-%d_%H:%M:%S')
+# Go 编译参数
+LDFLAGS = -X main.Version=$(VERSION) \
+          -X main.CommitHash=$(COMMIT_HASH) \
+          -X main.BuildTime=$(BUILD_TIME)
+
 .PHONY: help
 help:
 	@echo "iam-api-server 构建工具"
@@ -17,7 +24,7 @@ build: ## 本地编译
 	@echo "编译 $(APP_NAME)..."
 	cd $(ROOT_PATH) && \
 	pwd && \
-	CGO_ENABLED=0 go build -o bin/$(APP_NAME) ./$(SERVICE_PATH)
+	CGO_ENABLED=0 go build -ldflags="$(LDFLAGS)" -o bin/$(APP_NAME) ./$(SERVICE_PATH)
 
 .PHONY: run
 run: ## 本地运行
@@ -30,6 +37,9 @@ docker-build: ## 构建 Docker 镜像
 	cd $(ROOT_PATH) && \
 	pwd && \
 	docker build \
+		--build-arg VERSION=$(VERSION) \
+		--build-arg COMMIT_HASH=$(COMMIT_HASH) \
+		--build-arg BUILD_TIME=$(BUILD_TIME) \
 		-t $(DOCKER_IMAGE):$(DOCKER_TAG) \
 		-t $(DOCKER_IMAGE):latest \
 		-f $(SERVICE_PATH)/Dockerfile \
@@ -39,6 +49,11 @@ docker-build: ## 构建 Docker 镜像
 docker-push: ## 推送镜像
 	docker push $(DOCKER_IMAGE):$(DOCKER_TAG)
 	docker push $(DOCKER_IMAGE):latest
+
+.PHONY: docker-checkversion
+docker-checkversion: ## 检查 Docker 镜像版本
+	@echo "检查 Docker 镜像版本..."
+	@docker run --rm $(DOCKER_IMAGE):$(DOCKER_TAG) /app/iamapiserver --version
 
 .PHONY: clean
 clean: ## 清理
