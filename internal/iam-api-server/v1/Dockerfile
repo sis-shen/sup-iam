@@ -1,16 +1,39 @@
-FROM golang:1.19 AS build
-WORKDIR /go/src
-COPY iam ./go
-COPY main.go .
-COPY go.sum .
-COPY go.mod .
+# 请在根目录构建镜像
+FROM golang:1.25.0 AS build
 
-ENV CGO_ENABLED=0
+ARG SERVICE_PATH=internal/iam-api-server/v1
+ARG PKG_PATH=internal/pkg
 
-RUN go build -o iamapiserver .
+WORKDIR /go/github.com/sis-shen/sup-iam
+RUN go env -w GOPROXY=https://goproxy.cn,direct
+COPY go.mod go.sum .
+RUN go mod download
+
+WORKDIR /go/github.com/sis-shen/sup-iam/${PKG_PATH}
+
+COPY ${PKG_PATH}/jwt ./jwt
+COPY ${PKG_PATH}/keys ./keys
+COPY ${PKG_PATH}/log ./log
+COPY ${PKG_PATH}/middleware ./middleware
+COPY ${PKG_PATH}/proto ./proto
+
+
+WORKDIR /go/github.com/sis-shen/sup-iam/${SERVICE_PATH}
+
+COPY ${SERVICE_PATH}/model ./model
+COPY ${SERVICE_PATH}/rpc ./rpc
+COPY ${SERVICE_PATH}/repository ./repository
+COPY ${SERVICE_PATH}/service ./service
+COPY ${SERVICE_PATH}/config ./config
+COPY ${SERVICE_PATH}/cache ./cache
+COPY ${SERVICE_PATH}/main.go .
+COPY ${SERVICE_PATH}/iamapiserver ./iamapiserver
+
+
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly -o /tmp/iam-api-server .
 
 FROM scratch AS runtime
 ENV GIN_MODE=release
-COPY --from=build /go/src/iamapiserver ./
+COPY --from=build /tmp/iam-api-server ./iamapiserver
 EXPOSE 8080/tcp
 ENTRYPOINT ["./iamapiserver"]
