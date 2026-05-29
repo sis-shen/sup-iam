@@ -34,6 +34,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -mod=readonly -o /tmp/iam-api-server .
 
 FROM scratch AS runtime
 ENV GIN_MODE=release
-COPY --from=build /tmp/iam-api-server ./iamapiserver
+COPY --from=build /tmp/iam-api-server /app/iamapiserver
 EXPOSE 8080/tcp
-ENTRYPOINT ["./iamapiserver"]
+ENTRYPOINT ["/app/iamapiserver"]
