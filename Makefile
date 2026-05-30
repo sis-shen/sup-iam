@@ -100,7 +100,7 @@ vet: ## 代码检查
 
 .PHONY: test
 test: ## 运行所有测试
-	go test -v -race -cover ./...
+	go test -v -race -coverprofile=coverage.out -cover ./...
 
 .PHONY: mod-update
 mod-update: ## 更新依赖
