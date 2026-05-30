@@ -37,7 +37,7 @@ func NewRedisCore(client *redis.Client, key string, level Level) zapcore.Core {
 }
 
 // WrapWithRedis 包装现有 Logger，添加 Redis 输出（不改原 Logger 接口）
-func WrapWithRedis(logger Logger, client *redis.Client, key string, level Level) Logger {
+func WrapWithRedis(logger Logger, client *redis.Client, key string, level Level) *zapLogger {
 	redisCore := NewRedisCore(client, key, level)
 	// 合并原有的 Core 和新的 Redis Core
 	teeCore := zapcore.NewTee(logger.getZapLogger().Core(), redisCore)

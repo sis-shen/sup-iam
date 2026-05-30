@@ -186,7 +186,7 @@ type zapLogger struct {
 }
 
 // NewLogger create Logger from zap.Logger
-func NewLogger(l *zap.Logger) Logger {
+func NewLogger(l *zap.Logger) *zapLogger {
 	return &zapLogger{
 		zapLogger: l,
 		infoLogger: infoLogger{
