@@ -68,6 +68,12 @@ type RedisConfig struct {
 }
 
 type GrpcConfig struct {
-	Host string `mapstructure:"host"`
-	Port int    `mapstructure:"port"`
+	Host                string        `mapstructure:"host"`
+	Port                int           `mapstructure:"port"`
+	EtcdServerDiscovery bool          `mapstructure:"etcd_server_discovery"`
+	EtcdHost            string        `mapstructure:"etcd_host"`
+	EtcdPort            int           `mapstructure:"etcd_port"`
+	ServiceName         string        `mapstructure:"service_name"`
+	LeaseTTL            time.Duration `mapstructure:"lease_ttl"`
+	ServiceAddress      string        `mapstructure:"service_address"`
 }

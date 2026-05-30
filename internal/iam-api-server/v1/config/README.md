@@ -170,6 +170,12 @@ export IAM_CONFIG_FILE=/etc/iam/custom-config.yaml
 |--------|---------|--------|------|
 | `host` | `IAM_GRPC_HOST` | `0.0.0.0` | 监听地址 |
 | `port` | `IAM_GRPC_PORT` | `9090` | 监听端口 |
+| `etcd_server_discovery` | `IAM_GRPC_ETCD_SERVER_DISCOVERY` | `false` | etcd 服务发现开关 |
+| `etcd_host` | `IAM_GRPC_ETCD_HOST` | `127.0.0.1` | etcd 服务地址 |
+| `etcd_port` | `IAM_GRPC_ETCD_PORT` | `2379` | etcd 服务端口 |
+| `service_name` | `IAM_GRPC_SERVICE_NAME` | `""` | gRPC 服务名称（开启 etcd 服务发现时需要配置） |
+| `lease_ttl` | `IAM_GRPC_LEASE_TTL` | `10s` | etcd 租约过期时间 |
+| `service_address` | `IAM_GRPC_SERVICE_ADDRESS` | `""` | gRPC 服务注册地址（为空时自动获取本机 IP+grpc端口） |
 
 ### MySQL 配置（`mysql`）
 

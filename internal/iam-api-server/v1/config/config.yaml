@@ -103,6 +103,18 @@ grpc:
   read_timeout: 30s
   # 写入超时
   write_timeout: 30s
+  # etcd服务发现开关
+  etcd_server_discovery: false
+  # etcd服务地址
+  etcd_host: "127.0.0.1"
+  # etcd服务端口
+  etcd_port: 2379
+  # gRPC服务名称（开启etcd服务发现时需要配置）
+  service_name: ""
+  # etcd租约过期时间
+  lease_ttl: 10s
+  # gRPC服务注册地址（为空时自动获取本机IP+grpc端口）
+  service_address: ""
 
 # ========== 日志配置 ==========
 log:
