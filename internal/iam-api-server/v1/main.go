@@ -14,12 +14,18 @@ import (
 	"fmt"
 	"github.com/redis/go-redis/v9"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/cache"
+	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/config"
+	server "github.com/sis-shen/sup-iam/internal/iam-api-server/v1/iamapiserver"
+	mysqlDB "github.com/sis-shen/sup-iam/internal/iam-api-server/v1/repository/mysql"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/rpc"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/service"
 	"github.com/sis-shen/sup-iam/internal/pkg/jwt"
+	"github.com/sis-shen/sup-iam/internal/pkg/log"
 	"github.com/sis-shen/sup-iam/internal/pkg/middleware"
 	pbv1 "github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v1"
 	"github.com/spf13/pflag"
+	etcdclient "go.etcd.io/etcd/client/v3"
+	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"gorm.io/driver/mysql"
@@ -31,11 +37,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/config"
-	server "github.com/sis-shen/sup-iam/internal/iam-api-server/v1/iamapiserver"
-	mysqlDB "github.com/sis-shen/sup-iam/internal/iam-api-server/v1/repository/mysql"
-	"github.com/sis-shen/sup-iam/internal/pkg/log"
 )
 
 var (
@@ -43,6 +44,15 @@ var (
 	BuildTime  string
 	CommitHash string
 )
+
+// 定义一个结构体，用于存放需要优雅关闭的资源
+type shutdownResources struct {
+	httpServer    *http.Server
+	grpcServer    *grpc.Server
+	etcdLeaseID   etcdclient.LeaseID
+	etcdCli       *etcdclient.Client
+	stopKeepAlive chan struct{}
+}
 
 func main() {
 	var showVersion bool
@@ -85,6 +95,7 @@ func main() {
 
 	// =======3. 创建errgroup管理
 	g, ctx := errgroup.WithContext(context.Background())
+	shutdownRes := &shutdownResources{}
 
 	// ========= 4.初始化router
 	routes := initRoutes(logger, mysqlCli, jm, blackList)
@@ -102,8 +113,9 @@ func main() {
 	}
 
 	g.Go(func() error {
+		shutdownRes.httpServer = httpServer
 		logger.Infof("starting http server on %s", address)
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := httpServer.ListenAndServe(); err != nil {
 			return fmt.Errorf("fail to start http server: %v", err)
 		}
 		return nil
@@ -116,8 +128,30 @@ func main() {
 	}
 	grpcServer := initGrpcServer(mysqlCli)
 
+	if conf.GrpcConfig.EtcdServerDiscovery {
+		cli, err := etcdclient.NewFromURL(fmt.Sprintf("%s:%d", conf.GrpcConfig.EtcdHost, conf.GrpcConfig.EtcdPort))
+		if err != nil {
+			logger.Errorf("fail to create etcd client: %v", err)
+			return
+		}
+		shutdownRes.etcdCli = cli
+
+		id, err := registerToEtcdWithLease(*conf.GrpcConfig, cli, logger)
+		if err != nil {
+			logger.Errorf("fail to register to etcd: %v", err)
+			return
+		}
+		shutdownRes.etcdLeaseID = *id
+
+		stopChan := make(chan struct{})
+		shutdownRes.stopKeepAlive = stopChan
+		go keepAliveLease(cli, *id, stopChan, logger)
+	}
+
+	//启动grpc
 	g.Go(func() error {
 		logger.Infof("starting grpc server")
+		shutdownRes.grpcServer = grpcServer
 		if err := grpcServer.Serve(grpcLis); err != nil {
 			return fmt.Errorf("fail to start grpc server: %v", err)
 		}
@@ -139,12 +173,33 @@ func main() {
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), conf.Server.GraceTimeout)
 		defer shutdownCancel()
 
-		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+		if err := shutdownRes.httpServer.Shutdown(shutdownCtx); err != nil {
 			logger.Errorf("fail to shutdown http server: %v", err)
 		}
 
 		//关停grpc
-		grpcServer.GracefulStop()
+		shutdownRes.grpcServer.GracefulStop()
+
+		//关停etcd
+		if conf.GrpcConfig.EtcdServerDiscovery && shutdownRes.etcdCli != nil {
+			if shutdownRes.stopKeepAlive != nil {
+				close(shutdownRes.stopKeepAlive)
+			}
+			// 撤销租约
+			if shutdownRes.etcdLeaseID != 0 {
+				_, err := shutdownRes.etcdCli.Revoke(context.Background(), shutdownRes.etcdLeaseID)
+				if err != nil {
+					logger.Errorf("fail to revoke etcd lease: %v", err)
+				} else {
+					logger.Infof("revoked etcd lease: %v", shutdownRes.etcdLeaseID)
+				}
+			}
+			//关闭etcd客户端链接
+			if err := shutdownRes.etcdCli.Close(); err != nil {
+				logger.Errorf("fail to close etcd: %v", err)
+			}
+		}
+
 		return nil
 	})
 
@@ -167,6 +222,74 @@ func main() {
 	}
 
 	logger.Infof("finish graceful shutdown")
+}
+
+func registerToEtcdWithLease(conf config.GrpcConfig, etcdCli *etcdclient.Client, logger log.Logger) (*etcdclient.LeaseID, error) {
+	// 创建 endpoints 管理器
+	em, err := endpoints.NewManager(etcdCli, conf.ServiceName)
+	if err != nil {
+		return nil, err
+	}
+
+	// 创建租约
+	ttl := int64(conf.LeaseTTL.Seconds())
+	if ttl == 0 {
+		ttl = 10
+	}
+	lease, err := etcdCli.Grant(context.Background(), ttl)
+	if err != nil {
+		return nil, err
+	}
+
+	// 注册当前实例的地址，使用唯一 key（比如加上 hostname 或 IP）
+	// 注意：每个实例应该有唯一的 key，否则会互相覆盖
+	key := fmt.Sprintf("%s/%s", conf.ServiceName, conf.ServiceAddress)
+	err = em.AddEndpoint(context.Background(), key, endpoints.Endpoint{
+		Addr: conf.ServiceAddress,
+	}, etcdclient.WithLease(lease.ID))
+
+	if err != nil {
+		logger.Fatalf("fail to register to etcd: %v", err)
+		return nil, err
+	}
+
+	logger.Infof("Service registered to etcd: %s -> %s (leaseID: %d, TTL: %ds)\n",
+		key, conf.ServiceAddress, lease.ID, ttl)
+
+	return &lease.ID, nil
+
+}
+
+// 续约函数：保持租约活跃
+func keepAliveLease(cli *etcdclient.Client, leaseID etcdclient.LeaseID, stopCh <-chan struct{}, logger log.Logger) {
+	// 注意：必须消费 KeepAlive 返回的 channel，否则租约不会自动续期
+	keepAliveChan, err := cli.KeepAlive(context.Background(), leaseID)
+	if err != nil {
+		logger.Errorf("failed to start keepalive: %v", err)
+		return
+	}
+
+	logger.Infof("etcd keepalive started for lease %d", leaseID)
+
+	for {
+		select {
+		case <-stopCh:
+			logger.Infof("stop keepalive for lease %d", leaseID)
+			return
+		case kaResp, ok := <-keepAliveChan:
+			if !ok {
+				// 通道关闭，说明连接异常
+				logger.Warnf("etcd keepalive channel closed for lease %d", leaseID)
+				return
+			}
+			if kaResp == nil {
+				logger.Warnf("etcd keepalive response is nil, lease %d may have expired", leaseID)
+				return
+			}
+			// 可选：记录续约成功（生产环境可设为 Debug 级别）
+			logger.Debugf("etcd lease %d renewed, TTL: %d", kaResp.ID, kaResp.TTL)
+		}
+	}
 }
 
 func initGrpcServer(mysqlCli *gorm.DB) *grpc.Server {
