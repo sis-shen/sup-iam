@@ -79,6 +79,8 @@ type Logger interface {
 	// Flush calls the underlying Core's Sync method, flushing any buffered
 	// log entries. Applications should take care to call Sync before exiting.
 	Flush()
+
+	getZapLogger() *zap.Logger
 }
 
 var _ Logger = &zapLogger{}
@@ -193,6 +195,10 @@ func NewLogger(l *zap.Logger) Logger {
 			vlevel: 0,
 		},
 	}
+}
+
+func (l *zapLogger) getZapLogger() *zap.Logger {
+	return l.zapLogger
 }
 
 // New create logger by opts which can custmoized by command arguments.
