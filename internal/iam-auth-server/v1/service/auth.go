@@ -62,7 +62,7 @@ func (ac *AuthCase) Authorize(ctx context.Context, secretID string, accessKey st
 		if err != nil {
 			return false, nil, err
 		}
-		ok, err := ac.enforcer.AddPolicy(policies)
+		ok, err := ac.enforcer.AddPolicies(policies)
 		if err != nil {
 			return false, nil, err
 		}
