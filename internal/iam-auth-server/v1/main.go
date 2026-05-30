@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/config"
 	server "github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/go"
 	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/rpc"
@@ -19,6 +20,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 )
 
 var (
@@ -61,6 +63,21 @@ func main() {
 
 	//====== 2. 加载组件
 	logger := log.New(conf.Log)
+
+	if conf.Server.EnableRedisSink {
+		redisCli, err := initRedisWithHealthCheck(conf.Redis)
+		if err != nil {
+			logger.Fatalf("fail to init redis client: %v", err)
+			return
+		}
+		var level log.Level
+		if err := level.UnmarshalText([]byte(conf.Server.SinkLevel)); err != nil {
+			level = log.InfoLevel
+		}
+		logger = log.WrapWithRedis(logger, redisCli,
+			conf.Server.RedisKeyPrefix,
+			level)
+	}
 	conn, err := newGrpcConn(conf.Grpc, logger)
 	if err != nil {
 		logger.Errorf("fail to create grpc conn: %v", err)
@@ -194,4 +211,75 @@ func newGrpcConn(conf config.GrpcConfig, logger log.Logger) (*grpc.ClientConn, e
 
 		return conn, nil
 	}
+}
+
+// initRedisWithHealthCheck Redis 连接（带健康检查）
+func initRedisWithHealthCheck(conf config.RedisConfig) (*redis.Client, error) {
+	client, err := initRedis(conf)
+	if err != nil {
+		return nil, err
+	}
+
+	// 启动健康检查 goroutine
+	go func() {
+		ticker := time.NewTicker(conf.HealthCheckInterval)
+		defer ticker.Stop()
+
+		ctx := context.Background()
+		for range ticker.C {
+			if err := client.Ping(ctx).Err(); err != nil {
+				fmt.Printf("Redis health check failed: %v\n", err)
+			}
+		}
+	}()
+
+	return client, nil
+}
+
+func initRedis(conf config.RedisConfig) (*redis.Client, error) {
+	// 构建 Redis 客户端
+	client := redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%d", conf.Host, conf.Port),
+		Password: conf.Password,
+		DB:       getRedisDB(conf.DatabaseName), // 将数据库名称转换为数字
+
+		// 连接池配置
+		PoolSize:        conf.PoolSize,        // 连接池大小
+		MinIdleConns:    conf.MinIdleConns,    // 最小空闲连接数
+		MaxIdleConns:    conf.MaxIdleConns,    // 最大空闲连接数
+		ConnMaxIdleTime: conf.ConnMaxIdleTime, // 连接最大空闲时间
+		ConnMaxLifetime: conf.ConnMaxLifetime, // 连接最大生命周期
+
+		// 超时配置
+		DialTimeout:  conf.DialTimeout,  // 连接超时
+		ReadTimeout:  conf.ReadTimeout,  // 读超时
+		WriteTimeout: conf.WriteTimeout, // 写超时
+		PoolTimeout:  conf.PoolTimeout,  // 连接池获取连接超时
+	})
+
+	// 测试连接
+	ctx := context.Background()
+	if err := client.Ping(ctx).Err(); err != nil {
+		return nil, fmt.Errorf("failed to ping redis: %w", err)
+	}
+
+	return client, nil
+}
+
+// getRedisDB 将数据库名称转换为 Redis DB 编号
+// 支持字符串格式: "0", "1", "default" 等
+func getRedisDB(dbName string) int {
+	if dbName == "" {
+		return 0
+	}
+
+	// 尝试转换为整数
+	var db int
+	_, err := fmt.Sscanf(dbName, "%d", &db)
+	if err != nil {
+		// 如果转换失败，使用默认值 0
+		return 0
+	}
+
+	return db
 }
