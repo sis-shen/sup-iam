@@ -1,5 +1,5 @@
 # cmd/iam-auth-server/Makefile
-APP_NAME = LVS
+APP_NAME = lvs
 SERVICE_PATH = deploy/LVS
 ROOT_PATH = $(CURDIR)/../.. 
 
