@@ -14,12 +14,31 @@ jobs:
       contents: read # 允许读取仓库内容，必要时可以调整权限
       packages: write # 允许推送 Docker 镜像到 GHCR，如果需要推送的话
     steps:
-      # 1. 拉取你的代码
+      #  拉取代码
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. 【核心】直接调用你的 Makefile 进行构建和测试
-      #    这样做最灵活，你原本的 make 命令无需任何改动
+      # 设置 Go 环境
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25' 
+
+        # 运行单元测试（带缓存和详细输出）
+      - name: Run Go tests
+        run: |
+          make test
+          go tool cover -func=coverage.out  # 显示覆盖率摘要
+
+        # 上传测试报告（便于在GitHub Actions界面查看）
+      - name: Upload test coverage
+        uses: actions/upload-artifact@v4
+        if: always()  # 即使测试失败也上传
+        with:
+          name: test-coverage
+          path: coverage.out
+
+      # 2. 直接调用 Makefile 进行构建和测试
       - name: Build with Makefile
         run: |
           make docker-build VERSION=${{ github.sha }}
