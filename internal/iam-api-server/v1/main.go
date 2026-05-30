@@ -89,6 +89,16 @@ func main() {
 		logger.Errorf("fail to init redis: %v", err)
 		return
 	}
+
+	if conf.Server.EnableRedisSink {
+		var level log.Level
+		if err := level.UnmarshalText([]byte(conf.Server.SinkLevel)); err != nil {
+			level = log.InfoLevel
+		}
+		logger = log.WrapWithRedis(logger, redisCli,
+			conf.Server.RedisKeyPrefix,
+			level)
+	}
 	jm := initJWTManager(*conf.JWT)
 	jwtMiddleWare := middleware.JWTAuthMiddleware(&jm, conf.JWT.SkipPaths)
 	blackList := cache.NewRedisTokenBlackList(redisCli, conf.Server.BlackListTTL)
