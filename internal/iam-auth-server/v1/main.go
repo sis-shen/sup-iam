@@ -10,6 +10,8 @@ import (
 	"github.com/sis-shen/sup-iam/internal/pkg/log"
 	"github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v1"
 	"github.com/spf13/pflag"
+	etcdclient "go.etcd.io/etcd/client/v3"
+	etcdresolver "go.etcd.io/etcd/client/v3/naming/resolver"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -25,6 +27,14 @@ var (
 	CommitHash string
 )
 
+type ShutdownResources struct {
+	httpServer *http.Server
+	grpcConn   *grpc.ClientConn
+	etcdClient *etcdclient.Client
+}
+
+var shutdownRes ShutdownResources
+
 func main() {
 	var showVersion bool
 	pflag.BoolVarP(&showVersion, "version", "v", false, "show version")
@@ -35,6 +45,7 @@ func main() {
 		return
 	}
 
+	shutdownRes = ShutdownResources{}
 	//======== 1.加载配置
 	conf, err := config.Load("")
 	if err != nil {
@@ -50,13 +61,13 @@ func main() {
 
 	//====== 2. 加载组件
 	logger := log.New(conf.Log)
-	conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", conf.Grpc.Host, conf.Grpc.Port),
-		grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := newGrpcConn(conf.Grpc, logger)
 	if err != nil {
-		logger.Fatalf("Fail to connect grpc server: %v", err.Error())
+		logger.Errorf("fail to create grpc conn: %v", err)
+		return
 	}
+	shutdownRes.grpcConn = conn
 
-	defer conn.Close()
 	client := pbv1.NewAuthQueryServiceClient(conn)
 
 	// =======3. 创建errgroup管理
@@ -83,7 +94,8 @@ func main() {
 
 	g.Go(func() error {
 		logger.Infof("starting http server on %s", address)
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		shutdownRes.httpServer = httpServer
+		if err := httpServer.ListenAndServe(); err != nil {
 			return fmt.Errorf("fail to start http server: %v", err)
 		}
 		return nil
@@ -104,8 +116,30 @@ func main() {
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), conf.Server.GraceTimeout)
 		defer shutdownCancel()
 
-		if err := httpServer.Shutdown(shutdownCtx); err != nil {
-			logger.Errorf("fail to shutdown http server: %v", err)
+		if shutdownRes.httpServer != nil {
+			if err := shutdownRes.httpServer.Shutdown(shutdownCtx); err != nil {
+				logger.Errorf("fail to shutdown http server: %v", err)
+			} else {
+				logger.Infof("http server shutdown successfully")
+			}
+		}
+
+		// 2. 关闭 gRPC 客户端连接
+		if shutdownRes.grpcConn != nil {
+			if err := shutdownRes.grpcConn.Close(); err != nil {
+				logger.Errorf("fail to close grpc connection: %v", err)
+			} else {
+				logger.Infof("grpc connection closed")
+			}
+		}
+
+		// 3. 关闭 etcd 客户端
+		if shutdownRes.etcdClient != nil {
+			if err := shutdownRes.etcdClient.Close(); err != nil {
+				logger.Errorf("fail to close etcd client: %v", err)
+			} else {
+				logger.Infof("etcd client closed")
+			}
 		}
 
 		return nil
@@ -117,4 +151,47 @@ func main() {
 	}
 
 	logger.Infof("finish graceful shutdown")
+}
+
+func newGrpcConn(conf config.GrpcConfig, logger log.Logger) (*grpc.ClientConn, error) {
+	if conf.EtcdServerDiscovery {
+		//连接到etcd
+		etcdCli, err := etcdclient.NewFromURL(fmt.Sprintf("%s:%d", conf.Host, conf.Port))
+		if err != nil {
+			logger.Fatalf("fail to create etcd client: %v", err)
+			return nil, err
+		}
+
+		// 创建etcd resolver
+		builder, err := etcdresolver.NewBuilder(etcdCli)
+		if err != nil {
+			logger.Fatalf("fail to create etcd resolver: %v", err)
+			return nil, err
+		}
+		shutdownRes.etcdClient = etcdCli
+
+		target := fmt.Sprintf("etcd:///%s", conf.ServiceName)
+		conn, err := grpc.NewClient(
+			target,
+			grpc.WithResolvers(builder),
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy":"round_robin"}`),
+		)
+
+		if err != nil {
+			logger.Fatalf("fail to create grpc client: %v", err)
+			return nil, err
+		}
+
+		return conn, nil
+	} else {
+		conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", conf.Host, conf.Port),
+			grpc.WithTransportCredentials(insecure.NewCredentials()))
+		if err != nil {
+			logger.Fatalf("Fail to connect grpc server: %v", err.Error())
+			return nil, err
+		}
+
+		return conn, nil
+	}
 }
