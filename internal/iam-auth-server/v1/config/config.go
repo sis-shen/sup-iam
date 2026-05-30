@@ -21,6 +21,8 @@ type ServerConfig struct {
 	GraceTimeout time.Duration `mapstructure:"grace_timeout"`
 }
 type GrpcConfig struct {
-	Host string `mapstructure:"host"`
-	Port int    `mapstructure:"port"`
+	Host                string `mapstructure:"host"`
+	Port                int    `mapstructure:"port"`
+	EtcdServerDiscovery bool   `mapstructure:"etcd_server_discovery"`
+	ServiceName         string `mapstructure:"service_name"`
 }

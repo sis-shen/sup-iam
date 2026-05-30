@@ -25,6 +25,10 @@ grpc:
   host: "127.0.0.1"
   # gRPC服务端端口（可通过环境变量 IAM_GRPC_PORT 覆盖）
   port: 9090
+  # 是否启用 etcd 服务发现（可通过环境变量 IAM_GRPC_ETCD_SERVER_DISCOVERY 覆盖）
+  etcd_server_discovery: false
+  # gRPC 服务名称（可通过环境变量 IAM_GRPC_SERVICE_NAME 覆盖）
+  service_name: ""
 
 # ========== 日志配置 ==========
 log:

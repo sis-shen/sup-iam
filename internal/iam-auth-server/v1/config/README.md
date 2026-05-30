@@ -39,6 +39,8 @@ server:
 grpc:
   host: "127.0.0.1"
   port: 9090
+  etcd_server_discovery: false
+  service_name: ""
 
 log:
   level: "info"
@@ -115,6 +117,8 @@ export IAM_CONFIG_FILE=/etc/iam/custom-config.yaml
 |--------|---------|--------|------|
 | `host` | `IAM_GRPC_HOST` | `127.0.0.1` | IAM API Server gRPC 地址 |
 | `port` | `IAM_GRPC_PORT` | `9090` | IAM API Server gRPC 端口 |
+| `etcd_server_discovery` | `IAM_GRPC_ETCD_SERVER_DISCOVERY` | `false` | 是否启用 etcd 服务发现 |
+| `service_name` | `IAM_GRPC_SERVICE_NAME` | `""` | gRPC 服务名称（etcd 服务发现时使用） |
 
 ### 日志配置（`log`）
 

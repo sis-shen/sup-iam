@@ -77,8 +77,10 @@ func LoadEnvVars(v *viper.Viper) {
 		"server.grace_timeout": "IAM_SERVER_GRACE_TIMEOUT",
 
 		// gRPC
-		"grpc.host": "IAM_GRPC_HOST",
-		"grpc.port": "IAM_GRPC_PORT",
+		"grpc.host":                  "IAM_GRPC_HOST",
+		"grpc.port":                  "IAM_GRPC_PORT",
+		"grpc.etcd_server_discovery": "IAM_GRPC_ETCD_SERVER_DISCOVERY",
+		"grpc.service_name":          "IAM_GRPC_SERVICE_NAME",
 
 		// 日志
 		"log.level":              "IAM_LOG_LEVEL",
@@ -112,6 +114,8 @@ func setDefaults(v *viper.Viper) {
 	// gRPC默认值
 	v.SetDefault("grpc.host", "127.0.0.1")
 	v.SetDefault("grpc.port", 9090)
+	v.SetDefault("grpc.etcd_server_discovery", false)
+	v.SetDefault("grpc.service_name", "")
 
 	// 日志默认值
 	v.SetDefault("log.level", "info")
