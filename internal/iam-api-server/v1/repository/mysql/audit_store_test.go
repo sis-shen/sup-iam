@@ -1,5 +1,7 @@
 package mysql
 
+// go generate
+
 import (
 	"context"
 	"regexp"
