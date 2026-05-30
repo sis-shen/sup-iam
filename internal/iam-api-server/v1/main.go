@@ -316,7 +316,7 @@ func initRoutes(logger log.Logger, mysqlCli *gorm.DB, jm jwt.Manager, blackList 
 
 	hasher := service.NewInnerBcryptPasswordHasher(0)
 
-	userCase := service.NewUserCase(userStore)
+	userCase := service.NewUserCase(userStore, hasher)
 	policyCase := service.NewPolicyCase(policyStore)
 	secretCase := service.NewSecretCase(secretStore)
 	authCase := service.NewAuthCase(userStore, hasher, jm, blackList)
