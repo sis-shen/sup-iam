@@ -11,12 +11,16 @@ import (
 	"go.uber.org/mock/gomock"
 )
 
+func newTestUserCase(mockRepo *repomock.MockUserRepository) *UserCase {
+	return NewUserCase(mockRepo, NewInnerBcryptPasswordHasher(0))
+}
+
 func TestUserCase_GetUserList_Success(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
 	mockRepo := repomock.NewMockUserRepository(ctrl)
-	userCase := NewUserCase(mockRepo)
+	userCase := newTestUserCase(mockRepo)
 
 	query := repository.PageQuery{Limit: 10}
 	expected := repository.PageResult[*model.User]{
@@ -41,7 +45,7 @@ func TestUserCase_GetUserList_RepoError(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := repomock.NewMockUserRepository(ctrl)
-	userCase := NewUserCase(mockRepo)
+	userCase := newTestUserCase(mockRepo)
 
 	mockRepo.EXPECT().
 		GetList(gomock.Any(), gomock.Any()).
@@ -56,7 +60,7 @@ func TestUserCase_GetUserByID_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := repomock.NewMockUserRepository(ctrl)
-	userCase := NewUserCase(mockRepo)
+	userCase := newTestUserCase(mockRepo)
 
 	expected := &model.User{ID: 1, Username: "alice"}
 	mockRepo.EXPECT().
@@ -73,7 +77,7 @@ func TestUserCase_GetUserByID_NotFound(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := repomock.NewMockUserRepository(ctrl)
-	userCase := NewUserCase(mockRepo)
+	userCase := newTestUserCase(mockRepo)
 
 	mockRepo.EXPECT().
 		GetByID(gomock.Any(), "999").
@@ -88,7 +92,7 @@ func TestUserCase_CreateUser_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := repomock.NewMockUserRepository(ctrl)
-	userCase := NewUserCase(mockRepo)
+	userCase := newTestUserCase(mockRepo)
 
 	input := &model.User{Username: "newuser"}
 	expected := &model.User{ID: 1, Username: "newuser"}
@@ -107,7 +111,7 @@ func TestUserCase_UpdateUser_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := repomock.NewMockUserRepository(ctrl)
-	userCase := NewUserCase(mockRepo)
+	userCase := newTestUserCase(mockRepo)
 
 	input := &model.User{ID: 1, Nickname: "new-nick"}
 	expected := &model.User{ID: 1, Nickname: "new-nick"}
@@ -126,7 +130,7 @@ func TestUserCase_DeleteUser_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := repomock.NewMockUserRepository(ctrl)
-	userCase := NewUserCase(mockRepo)
+	userCase := newTestUserCase(mockRepo)
 
 	mockRepo.EXPECT().
 		DeleteByID(gomock.Any(), "1").
@@ -141,7 +145,7 @@ func TestUserCase_DeleteUser_NotFound(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := repomock.NewMockUserRepository(ctrl)
-	userCase := NewUserCase(mockRepo)
+	userCase := newTestUserCase(mockRepo)
 
 	mockRepo.EXPECT().
 		DeleteByID(gomock.Any(), "999").
@@ -156,7 +160,7 @@ func TestUserCase_GetUserByEmail_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := repomock.NewMockUserRepository(ctrl)
-	userCase := NewUserCase(mockRepo)
+	userCase := newTestUserCase(mockRepo)
 
 	expected := &model.User{ID: 1, Username: "alice"}
 	mockRepo.EXPECT().
@@ -173,7 +177,7 @@ func TestUserCase_GetUserByPhone_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := repomock.NewMockUserRepository(ctrl)
-	userCase := NewUserCase(mockRepo)
+	userCase := newTestUserCase(mockRepo)
 
 	expected := &model.User{ID: 1, Username: "alice"}
 	mockRepo.EXPECT().
@@ -190,7 +194,7 @@ func TestUserCase_GetUserByUsername_Success(t *testing.T) {
 	defer ctrl.Finish()
 
 	mockRepo := repomock.NewMockUserRepository(ctrl)
-	userCase := NewUserCase(mockRepo)
+	userCase := newTestUserCase(mockRepo)
 
 	expected := &model.User{ID: 1, Username: "alice"}
 	mockRepo.EXPECT().
@@ -200,4 +204,60 @@ func TestUserCase_GetUserByUsername_Success(t *testing.T) {
 	result, err := userCase.GetUserByUsername(context.Background(), "alice")
 	assert.NoError(t, err)
 	assert.Equal(t, uint64(1), result.ID)
+}
+
+// ---------------------------------------------------------------------------
+// HashPassword / VerifyPassword 测试
+// ---------------------------------------------------------------------------
+
+func TestUserCase_HashPassword_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := repomock.NewMockUserRepository(ctrl)
+	userCase := newTestUserCase(mockRepo)
+
+	hash, err := userCase.HashPassword("MyP@ss123")
+	assert.NoError(t, err)
+	assert.NotEmpty(t, hash)
+	assert.NotEqual(t, "MyP@ss123", hash, "password should be hashed")
+}
+
+func TestUserCase_VerifyPassword_Success(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := repomock.NewMockUserRepository(ctrl)
+	userCase := newTestUserCase(mockRepo)
+
+	hash, err := userCase.HashPassword("MyP@ss123")
+	assert.NoError(t, err)
+
+	err = userCase.VerifyPassword("MyP@ss123", hash)
+	assert.NoError(t, err)
+}
+
+func TestUserCase_VerifyPassword_WrongPassword(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := repomock.NewMockUserRepository(ctrl)
+	userCase := newTestUserCase(mockRepo)
+
+	hash, err := userCase.HashPassword("MyP@ss123")
+	assert.NoError(t, err)
+
+	err = userCase.VerifyPassword("WrongPassword", hash)
+	assert.Error(t, err)
+}
+
+func TestUserCase_VerifyPassword_InvalidHash(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	mockRepo := repomock.NewMockUserRepository(ctrl)
+	userCase := newTestUserCase(mockRepo)
+
+	err := userCase.VerifyPassword("MyP@ss123", "not-a-valid-bcrypt-hash")
+	assert.Error(t, err)
 }

@@ -290,3 +290,88 @@ func TestUserStore_GetList_DBError(t *testing.T) {
 	_, err := store.GetList(context.Background(), repository.PageQuery{Limit: 10})
 	require.Error(t, err)
 }
+
+func TestUserStore_GetByUsername_DBError(t *testing.T) {
+	gormDB, mock := newMockDB(t)
+	store := NewUserStore(gormDB)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `users` WHERE username = ? ORDER BY `users`.`id` LIMIT ?")).
+		WithArgs("error-user", 1).
+		WillReturnError(gorm.ErrInvalidDB)
+
+	_, err := store.GetByUsername(context.Background(), "error-user")
+	require.Error(t, err)
+}
+
+func TestUserStore_GetByEmail_DBError(t *testing.T) {
+	gormDB, mock := newMockDB(t)
+	store := NewUserStore(gormDB)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `users` WHERE email = ? ORDER BY `users`.`id` LIMIT ?")).
+		WithArgs("error@test.com", 1).
+		WillReturnError(gorm.ErrInvalidDB)
+
+	_, err := store.GetByEmail(context.Background(), "error@test.com")
+	require.Error(t, err)
+}
+
+func TestUserStore_GetByPhone_DBError(t *testing.T) {
+	gormDB, mock := newMockDB(t)
+	store := NewUserStore(gormDB)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `users` WHERE phone = ? ORDER BY `users`.`id` LIMIT ?")).
+		WithArgs("00000000000", 1).
+		WillReturnError(gorm.ErrInvalidDB)
+
+	_, err := store.GetByPhone(context.Background(), "00000000000")
+	require.Error(t, err)
+}
+
+func TestUserStore_Update_DBError(t *testing.T) {
+	gormDB, mock := newMockDB(t)
+	store := NewUserStore(gormDB)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE `users` SET")).
+		WillReturnError(gorm.ErrInvalidDB)
+	mock.ExpectRollback()
+
+	_, err := store.Update(context.Background(), &model.User{ID: 1})
+	require.Error(t, err)
+}
+
+func TestUserStore_ExistsByUsername_DBError(t *testing.T) {
+	gormDB, mock := newMockDB(t)
+	store := NewUserStore(gormDB)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT count(*) FROM `users` WHERE username = ?")).
+		WithArgs("error-user").
+		WillReturnError(gorm.ErrInvalidDB)
+
+	_, err := store.ExistsByUsername(context.Background(), "error-user")
+	require.Error(t, err)
+}
+
+func TestUserStore_ExistsByEmail_DBError(t *testing.T) {
+	gormDB, mock := newMockDB(t)
+	store := NewUserStore(gormDB)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT count(*) FROM `users` WHERE email = ?")).
+		WithArgs("error@test.com").
+		WillReturnError(gorm.ErrInvalidDB)
+
+	_, err := store.ExistsByEmail(context.Background(), "error@test.com")
+	require.Error(t, err)
+}
+
+func TestUserStore_ExistsByPhone_DBError(t *testing.T) {
+	gormDB, mock := newMockDB(t)
+	store := NewUserStore(gormDB)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT count(*) FROM `users` WHERE phone = ?")).
+		WithArgs("00000000000").
+		WillReturnError(gorm.ErrInvalidDB)
+
+	_, err := store.ExistsByPhone(context.Background(), "00000000000")
+	require.Error(t, err)
+}

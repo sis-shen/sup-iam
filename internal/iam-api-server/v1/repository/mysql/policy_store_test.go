@@ -147,6 +147,80 @@ func TestPolicyStore_GetListByUserID_InvalidQuery(t *testing.T) {
 	require.Equal(t, repository.ErrInvalidInput, err)
 }
 
+func TestPolicyStore_Update_DBError(t *testing.T) {
+	gormDB, mock := newMockDB(t)
+	store := NewPolicyStore(gormDB)
+
+	mock.ExpectBegin()
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE `policies` SET")).
+		WillReturnError(gorm.ErrInvalidDB)
+	mock.ExpectRollback()
+
+	_, err := store.Update(context.Background(), &model.Policy{ID: 1})
+	require.Error(t, err)
+}
+
+func TestPolicyStore_GetListByUserID_WithCursorDesc(t *testing.T) {
+	gormDB, mock := newMockDB(t)
+	store := NewPolicyStore(gormDB)
+
+	rows := sqlmock.NewRows([]string{"id", "name"}).
+		AddRow(5, "policy-5").
+		AddRow(4, "policy-4")
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `policies` WHERE userID = ? AND id <= ? ORDER BY id desc LIMIT ?")).
+		WithArgs("1", 5, 3).
+		WillReturnRows(rows)
+
+	result, err := store.GetListByUserID(context.Background(), "1", repository.PageQuery{
+		Limit: 2, Cursor: "5", Order: repository.OrderDesc,
+	})
+	require.NoError(t, err)
+	require.Equal(t, 2, len(result.Items))
+}
+
+func TestPolicyStore_GetSecretListByPolicyID_WithCursor(t *testing.T) {
+	gormDB, mock := newMockDB(t)
+	store := NewPolicyStore(gormDB)
+
+	rows := sqlmock.NewRows([]string{"id", "instanceID", "userID", "username", "accessKey",
+		"secretKey", "expires", "description", "extendShadow", "createdAt", "updatedAt"}).
+		AddRow(5, "ins-005", "1", "user", "ak-005", "sk-005", 0, "", nil, nil, nil)
+
+	mock.ExpectQuery(`JOIN secret_policy_binding spb`).
+		WithArgs("1", 5, 6).
+		WillReturnRows(rows)
+
+	result, err := store.GetSecretListByPolicyID(context.Background(), "1", repository.PageQuery{
+		Limit: 5, Cursor: "5",
+	})
+	require.NoError(t, err)
+	require.NoError(t, mock.ExpectationsWereMet())
+	_ = result
+}
+
+func TestPolicyStore_GetListByUserID_DBError(t *testing.T) {
+	gormDB, mock := newMockDB(t)
+	store := NewPolicyStore(gormDB)
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `policies` WHERE userID = ?")).
+		WillReturnError(gorm.ErrInvalidDB)
+
+	_, err := store.GetListByUserID(context.Background(), "1", repository.PageQuery{Limit: 10})
+	require.Error(t, err)
+}
+
+func TestPolicyStore_GetSecretListByPolicyID_DBError(t *testing.T) {
+	gormDB, mock := newMockDB(t)
+	store := NewPolicyStore(gormDB)
+
+	mock.ExpectQuery(`JOIN secret_policy_binding spb`).
+		WillReturnError(gorm.ErrInvalidDB)
+
+	_, err := store.GetSecretListByPolicyID(context.Background(), "1", repository.PageQuery{Limit: 10})
+	require.Error(t, err)
+}
+
 func TestPolicyStore_GetSecretListByPolicyID_Success(t *testing.T) {
 	gormDB, mock := newMockDB(t)
 	store := NewPolicyStore(gormDB)

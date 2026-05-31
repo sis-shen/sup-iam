@@ -278,6 +278,26 @@ func TestAuthorize_InvalidPolicyJSON(t *testing.T) {
 	require.Nil(t, matched)
 }
 
+func TestAuthorize_NoPolicies(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	mockCli := mock.NewMockRpcClientInterface(ctrl)
+	e := newTestEnforcer(t)
+	ac := &AuthCase{
+		cli:      mockCli,
+		keys:     keys.Keys{},
+		enforcer: *e,
+	}
+
+	mockCli.EXPECT().
+		GetPolicyListBySecretID(gomock.Any(), "6").
+		Return([]*appmodel.Policy{}, nil)
+
+	ok, matched, err := ac.Authorize(context.Background(), "6", "alice", "/api/resource", "GET")
+	require.NoError(t, err)
+	require.False(t, ok)
+	require.Empty(t, matched)
+}
+
 func TestAuthCaseInterfaceImplementation(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	mockCli := mock.NewMockRpcClientInterface(ctrl)

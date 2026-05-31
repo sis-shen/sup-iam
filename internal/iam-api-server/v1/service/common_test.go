@@ -192,3 +192,23 @@ func TestGenerateInstanceID_ContainsTimestampPrefix(t *testing.T) {
 	_, err := strconv.ParseUint(timestampHex, 16, 64)
 	assert.NoError(t, err, "timestamp part should be valid hex")
 }
+
+func TestGenerateInstanceID_Concurrent(t *testing.T) {
+	n := 50
+	ids := make(chan string, n)
+	for i := 0; i < n; i++ {
+		go func() {
+			ids <- GenerateInstanceID()
+		}()
+	}
+
+	seen := make(map[string]bool)
+	for i := 0; i < n; i++ {
+		id := <-ids
+		if seen[id] {
+			t.Errorf("duplicate instance ID generated concurrently: %s", id)
+		}
+		seen[id] = true
+	}
+	assert.Equal(t, n, len(seen), "all %d IDs should be unique", n)
+}
