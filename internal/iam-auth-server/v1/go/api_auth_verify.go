@@ -64,19 +64,28 @@ func (api *AuthVerifyAPI) VerifyRequest(c *gin.Context) {
 		return
 	}
 	if !ok {
-		log.Warnf("invalid secret: %v", err)
+		errMsg := "unknown error"
+		if err != nil {
+			errMsg = err.Error()
+		}
+		log.Warnf("invalid secret: %v", errMsg)
 		errRsp := ErrorResponse{
 			Error:            "verify secret failed",
-			ErrorDescription: err.Error(),
+			ErrorDescription: errMsg,
 		}
 		c.JSON(http.StatusBadRequest, errRsp)
+		return
 	}
 
 	if secret.AccessKey != req.AccessKey {
-		logger.Warnf("verify secret access key err: %v", err)
+		errMsg := "unknown error"
+		if err != nil {
+			errMsg = err.Error()
+		}
+		logger.Warnf("verify secret access key err: %v", errMsg)
 		errRsp := ErrorResponse{
 			Error:            "verify secret access key error",
-			ErrorDescription: err.Error(),
+			ErrorDescription: errMsg,
 		}
 		c.JSON(http.StatusBadRequest, errRsp)
 		return
@@ -90,6 +99,7 @@ func (api *AuthVerifyAPI) VerifyRequest(c *gin.Context) {
 			ErrorDescription: err.Error(),
 		}
 		c.JSON(http.StatusBadRequest, errRsp)
+		return
 	}
 	if !ok {
 		resp := VerifyResponse{

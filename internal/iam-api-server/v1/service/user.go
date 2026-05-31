@@ -27,8 +27,8 @@ type UserCase struct {
 // 确保 UserCase 实现了 UserCaseInterface
 var _ UserCaseInterface = (*UserCase)(nil)
 
-func NewUserCase(repo repository.UserRepository) *UserCase {
-	return &UserCase{repo: repo}
+func NewUserCase(repo repository.UserRepository, hasher PasswordHasherInterface) *UserCase {
+	return &UserCase{repo: repo, hasher: hasher}
 }
 
 func (uc *UserCase) GetUserList(ctx context.Context, query repository.PageQuery) (repository.PageResult[*model.User], error) {
