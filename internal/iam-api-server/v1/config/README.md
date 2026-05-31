@@ -151,6 +151,9 @@ export IAM_CONFIG_FILE=/etc/iam/custom-config.yaml
 | `idle_timeout` | `IAM_SERVER_IDLE_TIMEOUT` | `120s` | 空闲超时 |
 | `black_list_ttl` | `IAM_SERVER_BLACK_LIST_TTL` | `1h` | 黑名单过期时间 |
 | `grace_timeout` | `IAM_SERVER_GRACE_TIMEOUT` | `10s` | 优雅关闭超时 |
+| `enable_redis_sink` | `IAM_SERVER_ENABLE_REDIS_SINK` | `false` | 日志是否同步写入 Redis |
+| `redis_key_prefix` | `IAM_SERVER_REDIS_KEY_PREFIX` | `iam:log:` | 日志在 Redis 中的 key 前缀 |
+| `sink_level` | `IAM_SERVER_SINK_LEVEL` | `""` | 日志同步级别（为空则同步所有级别） |
 
 ### JWT 配置（`jwt`）
 

@@ -16,14 +16,17 @@ type AppConfig struct {
 
 // ServerConfig 服务器配置
 type ServerConfig struct {
-	Host         string        `mapstructure:"host"`
-	Port         int           `mapstructure:"port"`
-	Mode         string        `mapstructure:"mode"` // debug/release/test
-	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
-	WriteTimeout time.Duration `mapstructure:"write_timeout"`
-	IdleTimeout  time.Duration `mapstructure:"idle_timeout"`
-	BlackListTTL time.Duration `mapstructure:"black_list_ttl"`
-	GraceTimeout time.Duration `mapstructure:"grace_timeout"`
+	Host            string        `mapstructure:"host"`
+	Port            int           `mapstructure:"port"`
+	Mode            string        `mapstructure:"mode"` // debug/release/test
+	ReadTimeout     time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout    time.Duration `mapstructure:"write_timeout"`
+	IdleTimeout     time.Duration `mapstructure:"idle_timeout"`
+	BlackListTTL    time.Duration `mapstructure:"black_list_ttl"`
+	GraceTimeout    time.Duration `mapstructure:"grace_timeout"`
+	EnableRedisSink bool          `mapstructure:"enable_redis_sink"`
+	RedisKeyPrefix  string        `mapstructure:"redis_key_prefix"`
+	SinkLevel       string        `mapstructure:"sink_level"`
 }
 
 type JWTConfig struct {

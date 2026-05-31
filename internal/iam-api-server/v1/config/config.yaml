@@ -20,6 +20,12 @@ server:
   black_list_ttl: 1h
   # 优雅关闭超时
   grace_timeout: 10s
+  # 日志是否同步写入Redis
+  enable_redis_sink: false
+  # 日志在Redis中的key前缀
+  redis_key_prefix: "iam:log:"
+  # 日志同步级别（debug/info/warn/error），为空则同步所有级别
+  sink_level: ""
 
 # ========== JWT配置 ==========
 jwt:

@@ -4,7 +4,7 @@
 
 | 文件 | 作用 |
 |------|------|
-| `config.go` | 定义配置结构体 `Config`，包含 Server、gRPC、Log 三个子配置模块 |
+| `config.go` | 定义配置结构体 `Config`，包含 Server、gRPC、Redis、Log 四个子配置模块 |
 | `loader.go` | 配置加载引擎，负责读取配置文件、环境变量、设置默认值及配置验证 |
 | `config.yaml` | 默认 YAML 配置文件（开发环境），含所有配置项的默认值和注释说明 |
 
@@ -35,12 +35,31 @@ server:
   write_timeout: 30s
   idle_timeout: 120s
   grace_timeout: 10s
+  enable_redis_sink: false
+  redis_key_prefix: "iam:log:"
+  sink_level: ""
 
 grpc:
   host: "127.0.0.1"
   port: 9090
   etcd_server_discovery: false
   service_name: ""
+
+redis:
+  host: "127.0.0.1"
+  port: 6379
+  password: ""
+  database_name: 0
+  health_check_interval: 10s
+  pool_size: 10
+  min_idle_conns: 5
+  max_idle_conns: 10
+  conn_max_idle_time: 5m
+  conn_max_lifetime: 1h
+  dial_timeout: 5s
+  read_timeout: 3s
+  write_timeout: 3s
+  pool_timeout: 4s
 
 log:
   level: "info"
@@ -110,6 +129,9 @@ export IAM_CONFIG_FILE=/etc/iam/custom-config.yaml
 | `write_timeout` | `IAM_SERVER_WRITE_TIMEOUT` | `30s` | 写入超时 |
 | `idle_timeout` | `IAM_SERVER_IDLE_TIMEOUT` | `120s` | 空闲超时 |
 | `grace_timeout` | `IAM_SERVER_GRACE_TIMEOUT` | `10s` | 优雅关闭超时 |
+| `enable_redis_sink` | `IAM_SERVER_ENABLE_REDIS_SINK` | `false` | 日志是否同步写入 Redis |
+| `redis_key_prefix` | `IAM_SERVER_REDIS_KEY_PREFIX` | `iam:log:` | 日志在 Redis 中的 key 前缀 |
+| `sink_level` | `IAM_SERVER_SINK_LEVEL` | `""` | 日志同步级别（为空则同步所有级别） |
 
 ### gRPC 配置（`grpc`）
 
@@ -119,6 +141,25 @@ export IAM_CONFIG_FILE=/etc/iam/custom-config.yaml
 | `port` | `IAM_GRPC_PORT` | `9090` | IAM API Server gRPC 端口 |
 | `etcd_server_discovery` | `IAM_GRPC_ETCD_SERVER_DISCOVERY` | `false` | 是否启用 etcd 服务发现 |
 | `service_name` | `IAM_GRPC_SERVICE_NAME` | `""` | gRPC 服务名称（etcd 服务发现时使用） |
+
+### Redis 配置（`redis`）
+
+| 配置项 | 环境变量 | 默认值 | 说明 |
+|--------|---------|--------|------|
+| `host` | `IAM_REDIS_HOST` | `127.0.0.1` | Redis 地址 |
+| `port` | `IAM_REDIS_PORT` | `6379` | Redis 端口 |
+| `password` | `IAM_REDIS_PASSWORD` | （空） | Redis 密码 |
+| `database_name` | `IAM_REDIS_DATABASE_NAME` | `0` | Redis 数据库编号 |
+| `health_check_interval` | `IAM_REDIS_HEALTH_CHECK_INTERVAL` | `10s` | 健康检查间隔 |
+| `pool_size` | `IAM_REDIS_POOL_SIZE` | `10` | 连接池大小 |
+| `min_idle_conns` | `IAM_REDIS_MIN_IDLE_CONNS` | `5` | 最小空闲连接数 |
+| `max_idle_conns` | `IAM_REDIS_MAX_IDLE_CONNS` | `10` | 最大空闲连接数 |
+| `conn_max_idle_time` | `IAM_REDIS_CONN_MAX_IDLE_TIME` | `5m` | 连接最大空闲时间 |
+| `conn_max_lifetime` | `IAM_REDIS_CONN_MAX_LIFETIME` | `1h` | 连接最大存活时间 |
+| `dial_timeout` | `IAM_REDIS_DIAL_TIMEOUT` | `5s` | 拨号超时 |
+| `read_timeout` | `IAM_REDIS_READ_TIMEOUT` | `3s` | 读取超时 |
+| `write_timeout` | `IAM_REDIS_WRITE_TIMEOUT` | `3s` | 写入超时 |
+| `pool_timeout` | `IAM_REDIS_POOL_TIMEOUT` | `4s` | 连接池获取超时 |
 
 ### 日志配置（`log`）
 

@@ -68,19 +68,38 @@ func LoadEnvVars(v *viper.Viper) {
 	// 敏感信息必须通过环境变量设置
 	envMappings := map[string]string{
 		// 服务器
-		"server.host":          "IAM_SERVER_HOST",
-		"server.port":          "IAM_SERVER_PORT",
-		"server.mode":          "IAM_SERVER_MODE",
-		"server.read_timeout":  "IAM_SERVER_READ_TIMEOUT",
-		"server.write_timeout": "IAM_SERVER_WRITE_TIMEOUT",
-		"server.idle_timeout":  "IAM_SERVER_IDLE_TIMEOUT",
-		"server.grace_timeout": "IAM_SERVER_GRACE_TIMEOUT",
+		"server.host":              "IAM_SERVER_HOST",
+		"server.port":              "IAM_SERVER_PORT",
+		"server.mode":              "IAM_SERVER_MODE",
+		"server.read_timeout":      "IAM_SERVER_READ_TIMEOUT",
+		"server.write_timeout":     "IAM_SERVER_WRITE_TIMEOUT",
+		"server.idle_timeout":      "IAM_SERVER_IDLE_TIMEOUT",
+		"server.grace_timeout":     "IAM_SERVER_GRACE_TIMEOUT",
+		"server.enable_redis_sink": "IAM_SERVER_ENABLE_REDIS_SINK",
+		"server.redis_key_prefix":  "IAM_SERVER_REDIS_KEY_PREFIX",
+		"server.sink_level":        "IAM_SERVER_SINK_LEVEL",
 
 		// gRPC
 		"grpc.host":                  "IAM_GRPC_HOST",
 		"grpc.port":                  "IAM_GRPC_PORT",
 		"grpc.etcd_server_discovery": "IAM_GRPC_ETCD_SERVER_DISCOVERY",
 		"grpc.service_name":          "IAM_GRPC_SERVICE_NAME",
+
+		// Redis
+		"redis.host":                  "IAM_REDIS_HOST",
+		"redis.port":                  "IAM_REDIS_PORT",
+		"redis.password":              "IAM_REDIS_PASSWORD",
+		"redis.database_name":         "IAM_REDIS_DATABASE_NAME",
+		"redis.health_check_interval": "IAM_REDIS_HEALTH_CHECK_INTERVAL",
+		"redis.pool_size":             "IAM_REDIS_POOL_SIZE",
+		"redis.min_idle_conns":        "IAM_REDIS_MIN_IDLE_CONNS",
+		"redis.max_idle_conns":        "IAM_REDIS_MAX_IDLE_CONNS",
+		"redis.conn_max_idle_time":    "IAM_REDIS_CONN_MAX_IDLE_TIME",
+		"redis.conn_max_lifetime":     "IAM_REDIS_CONN_MAX_LIFETIME",
+		"redis.dial_timeout":          "IAM_REDIS_DIAL_TIMEOUT",
+		"redis.read_timeout":          "IAM_REDIS_READ_TIMEOUT",
+		"redis.write_timeout":         "IAM_REDIS_WRITE_TIMEOUT",
+		"redis.pool_timeout":          "IAM_REDIS_POOL_TIMEOUT",
 
 		// 日志
 		"log.level":              "IAM_LOG_LEVEL",
@@ -110,12 +129,30 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.write_timeout", "30s")
 	v.SetDefault("server.idle_timeout", "120s")
 	v.SetDefault("server.grace_timeout", "10s")
+	v.SetDefault("server.enable_redis_sink", false)
+	v.SetDefault("server.redis_key_prefix", "iam:log:")
+	v.SetDefault("server.sink_level", "")
 
 	// gRPC默认值
 	v.SetDefault("grpc.host", "127.0.0.1")
 	v.SetDefault("grpc.port", 9090)
 	v.SetDefault("grpc.etcd_server_discovery", false)
 	v.SetDefault("grpc.service_name", "")
+
+	// Redis默认值
+	v.SetDefault("redis.host", "127.0.0.1")
+	v.SetDefault("redis.port", 6379)
+	v.SetDefault("redis.database_name", 0)
+	v.SetDefault("redis.health_check_interval", "10s")
+	v.SetDefault("redis.pool_size", 10)
+	v.SetDefault("redis.min_idle_conns", 5)
+	v.SetDefault("redis.max_idle_conns", 10)
+	v.SetDefault("redis.conn_max_idle_time", "5m")
+	v.SetDefault("redis.conn_max_lifetime", "1h")
+	v.SetDefault("redis.dial_timeout", "5s")
+	v.SetDefault("redis.read_timeout", "3s")
+	v.SetDefault("redis.write_timeout", "3s")
+	v.SetDefault("redis.pool_timeout", "4s")
 
 	// 日志默认值
 	v.SetDefault("log.level", "info")

@@ -68,14 +68,17 @@ func LoadEnvVars(v *viper.Viper) {
 	// 敏感信息必须通过环境变量设置
 	envMappings := map[string]string{
 		// 服务器
-		"server.host":           "IAM_SERVER_HOST",
-		"server.port":           "IAM_SERVER_PORT",
-		"server.mode":           "IAM_SERVER_MODE",
-		"server.read_timeout":   "IAM_SERVER_READ_TIMEOUT",
-		"server.write_timeout":  "IAM_SERVER_WRITE_TIMEOUT",
-		"server.black_list_ttl": "IAM_SERVER_BLACK_LIST_TTL",
-		"server.idle_timeout":   "IAM_SERVER_IDLE_TIMEOUT",
-		"server.grace_timeout":  "IAM_SERVER_GRACE_TIMEOUT",
+		"server.host":              "IAM_SERVER_HOST",
+		"server.port":              "IAM_SERVER_PORT",
+		"server.mode":              "IAM_SERVER_MODE",
+		"server.read_timeout":      "IAM_SERVER_READ_TIMEOUT",
+		"server.write_timeout":     "IAM_SERVER_WRITE_TIMEOUT",
+		"server.black_list_ttl":    "IAM_SERVER_BLACK_LIST_TTL",
+		"server.idle_timeout":      "IAM_SERVER_IDLE_TIMEOUT",
+		"server.grace_timeout":     "IAM_SERVER_GRACE_TIMEOUT",
+		"server.enable_redis_sink": "IAM_SERVER_ENABLE_REDIS_SINK",
+		"server.redis_key_prefix":  "IAM_SERVER_REDIS_KEY_PREFIX",
+		"server.sink_level":        "IAM_SERVER_SINK_LEVEL",
 
 		// JWT
 		"jwt.secret_key":                "IAM_JWT_SECRET_KEY",
@@ -152,6 +155,9 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("server.black_list_ttl", "1h")
 	v.SetDefault("server.idle_timeout", "120s")
 	v.SetDefault("server.grace_timeout", "10s")
+	v.SetDefault("server.enable_redis_sink", false)
+	v.SetDefault("server.redis_key_prefix", "iam:log:")
+	v.SetDefault("server.sink_level", "")
 
 	// JWT默认值
 	v.SetDefault("jwt.access_token_expire_time", "1h")
