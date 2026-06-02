@@ -8,7 +8,7 @@ GO_REQUIRED_MAJOR ?= 1
 GO_REQUIRED_MINOR ?= 25  # 要求 Go 1.25+
 
 # 服务列表（按依赖顺序，可选）
-SERVICES = iam-api-server iam-auth-server LVS
+SERVICES = iam-api-server iam-auth-server iam-pump LVS
 
 # ========== 版本检查函数 ==========
 define check-go-version
