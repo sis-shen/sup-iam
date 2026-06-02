@@ -38,5 +38,5 @@ func (a *AnalyticFilters) ShouldFilter(username string) bool {
 }
 
 func (a *AnalyticFilters) HasFilter() bool {
-	return a.Usernames != nil && a.SkippedUsernames != nil
+	return a.Usernames != nil || a.SkippedUsernames != nil
 }
