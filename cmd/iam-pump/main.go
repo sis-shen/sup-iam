@@ -2,9 +2,28 @@
 // It is primarily used to display your analytics data in the iam operating system.
 package main
 
-import "github.com/sis-shen/sup-iam/internal/iam-pump"
+import (
+	"fmt"
+	"github.com/sis-shen/sup-iam/internal/iam-pump"
+	"github.com/spf13/pflag"
+)
+
+var (
+	Version    string
+	BuildTime  string
+	CommitHash string
+)
 
 func main() {
+	var showVersion bool
+	pflag.BoolVarP(&showVersion, "version", "v", false, "show version")
+	pflag.Parse()
+	if showVersion {
+		//显示版本信息后退出
+		fmt.Printf("Version: %s\nBuildTime: %s\nCommitHash: %s\n", Version, BuildTime, CommitHash)
+		return
+	}
+
 	app := iampump.NewApp("iam-pump")
 	if err := app.Start(); err != nil {
 		panic(err)
