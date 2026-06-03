@@ -190,6 +190,7 @@ func filterData(pump pumps.PumpInterface, keys []interface{}) []interface{} {
 }
 
 func (p *pumpServer) initialize() {
+	_ = p.analyticsStore.Connect()
 	pmps = make([]pumps.PumpInterface, 0)
 	for key, pmp := range p.mapPumpConfig {
 		pumpTypeName := pmp.Type
