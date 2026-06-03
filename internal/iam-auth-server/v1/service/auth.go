@@ -2,32 +2,60 @@ package service
 
 //go:generate mockgen -destination=./mock/auth_case_mock.go -package=mock . AuthCaseInterface
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/casbin/casbin/v2"
-	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
-	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/rpc"
+	casbinmodel "github.com/casbin/casbin/v2/model"
+	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/analytics"
+	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/load/cache"
+	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/model"
 	"github.com/sis-shen/sup-iam/internal/pkg/keys"
-	"strconv"
+	"sync"
 	"time"
 )
 
 type AuthCaseInterface interface {
 	BuildCanonicalString(accessKey string, method string, path string, contentHash, timeStamp string) string
-	VerifySecretKey(ctx context.Context, accessKey string, canonicalString string, signature string) (bool, *model.Secret, error)
-	Authorize(ctx context.Context, secretID string, accessKey string, path string, method string) (bool, []string, error)
+	VerifySecretKey(accessKey string, canonicalString string, signature string) (bool, *model.CachedSecret, error)
+	Authorize(secretID string, username string, path string, method string) (bool, []string, error)
 }
 
 type AuthCase struct {
-	cli      rpc.RpcClientInterface
-	keys     keys.Keys
-	enforcer casbin.Enforcer
+	keys         keys.KeysInterface
+	enforcerPool *sync.Pool
+	analytics    *analytics.Analytics
+	cache        *cache.Cache
 }
 
-func NewAuthCase(cli rpc.RpcClientInterface) *AuthCase {
-	return &AuthCase{cli: cli}
+var glbModel casbinmodel.Model
+var once sync.Once
+
+func NewAuthCase(ch *cache.Cache, keys keys.KeysInterface, analytics *analytics.Analytics) *AuthCase {
+	once.Do(func() {
+		m, err := casbinmodel.NewModelFromString(CurrenCasbinModelString)
+		if err != nil {
+			panic(err)
+		}
+		glbModel = m
+	})
+
+	pool := &sync.Pool{
+		New: func() interface{} {
+			e, err := casbin.NewEnforcer(glbModel, nil)
+			if err != nil {
+				//不应该发生
+				panic(err)
+			}
+			return e
+		},
+	}
+	return &AuthCase{
+		cache:        ch,
+		keys:         keys,
+		enforcerPool: pool,
+		analytics:    analytics,
+	}
 }
 
 var _ AuthCaseInterface = (*AuthCase)(nil)
@@ -36,49 +64,86 @@ func (ac *AuthCase) BuildCanonicalString(accessKey string, method string, path s
 	return fmt.Sprintf("%s\n%s\n%s\n%s\n%s", accessKey, method, path, contentHash, timeStamp)
 }
 
-func (ac *AuthCase) VerifySecretKey(ctx context.Context, accessKey string, canonicalString string, signature string) (bool, *model.Secret, error) {
-	secret, err := ac.cli.GetSecretByAK(ctx, accessKey)
+func (ac *AuthCase) VerifySecretKey(accessKey string, canonicalString string, signature string) (bool, *model.CachedSecret, error) {
+	secret, err := ac.cache.GetSecretByAK(accessKey)
 	if err != nil {
 		return false, nil, err
 	}
 	nowTIme := time.Now()
-	if nowTIme.After(time.Unix(secret.Expires, 0)) {
+	if nowTIme.After(secret.ExpiredAt) {
 		return false, nil, errors.New("secret expired")
 	}
 	ok, err := ac.keys.VerifySecretKey(secret.SecretKey, canonicalString, signature)
 	return ok, secret, err
 }
 
-func (ac *AuthCase) Authorize(ctx context.Context, secretID string, accessKey string, path string, method string) (bool, []string, error) {
-	policies, err := ac.cli.GetPolicyListBySecretID(ctx, secretID)
+func (ac *AuthCase) Authorize(secretID string, username string, path string, method string) (bool, []string, error) {
+	startTime := time.Now()
+	record := &analytics.AnalyticsRecord{
+		UserID:   "",
+		Username: username,
+		SecretID: secretID,
+		Resource: path,
+		Action:   method,
+	}
+	policies, err := ac.cache.GetPolicyListBySecretID(secretID)
 	if err != nil {
 		return false, nil, err
 	}
 	matchedPolies := make([]string, 0)
 	for _, policy := range policies {
-		ac.enforcer.ClearPolicy()
-		var policies [][]string
-		err := json.Unmarshal([]byte(*policy.PolicyShadow), &policies)
-		if err != nil {
-			return false, nil, err
-		}
-		ok, err := ac.enforcer.AddPolicies(policies)
-		if err != nil {
-			return false, nil, err
-		}
+		ok, err := func() (bool, error) {
+			e := ac.enforcerPool.Get().(*casbin.Enforcer)
+			defer ac.enforcerPool.Put(e)
+			e.ClearPolicy()
+			defer e.ClearPolicy()
 
-		if !ok {
-			return false, nil, errors.New("failed to add policy")
-		}
+			var decodes [][]string
+			err := json.Unmarshal([]byte(policy.DSL), &decodes)
+			if err != nil {
+				return false, err
+			}
+			ok, err := e.AddPolicies(decodes)
+			if err != nil {
+				return false, err
+			}
 
-		ok, err = ac.enforcer.Enforce(accessKey, path, method)
+			if !ok {
+				return false, errors.New("failed to add policy")
+			}
+
+			ok, err = e.Enforce(username, path, method)
+			if err != nil {
+				return false, err
+			}
+			if ok {
+				matchedPolies = append(matchedPolies, policy.ID)
+				return true, nil
+			}
+			return false, nil
+		}()
 		if err != nil {
+			record.Timestamp = time.Now()
+			record.Effect = "deny"
+			record.Reason = fmt.Sprintf("internal error : %v")
+			record.LatencyMs = time.Since(startTime).Milliseconds()
+			_ = ac.analytics.RecordHit(record)
 			return false, nil, err
 		}
 		if ok {
-			matchedPolies = append(matchedPolies, strconv.FormatUint(policy.ID, 10))
+			record.Timestamp = time.Now()
+			record.Effect = "allow"
+			record.Reason = fmt.Sprintf("matched policies : %v", matchedPolies)
+			record.LatencyMs = time.Since(startTime).Milliseconds()
+			_ = ac.analytics.RecordHit(record)
 			return true, matchedPolies, nil
 		}
 	}
+
+	record.Timestamp = time.Now()
+	record.Effect = "deny"
+	record.Reason = fmt.Sprintf("no policy allowed")
+	record.LatencyMs = time.Since(startTime).Milliseconds()
+	_ = ac.analytics.RecordHit(record)
 	return false, nil, nil
 }
