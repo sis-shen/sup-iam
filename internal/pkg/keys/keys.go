@@ -19,16 +19,16 @@ type KeysInterface interface {
 }
 
 type Keys struct {
-	AccessKeyLength int `json:"access_key_length"` // AccessKey 长度（字节）,默认
-	SecretKeyLength int `json:"secret_key_length"`
+	AccessKeyLength int `json:"access_key_length"` // AccessKey 长度（位）,至少32位
+	SecretKeyLength int `json:"secret_key_length"` // SecretKey 长度（位）,至少128位
 }
 
 func NewKeys(accessKeyLength int, secretKeyLength int) *Keys {
-	if accessKeyLength == 0 {
+	if accessKeyLength < 32 {
 		accessKeyLength = 32
 	}
 
-	if secretKeyLength == 0 {
+	if secretKeyLength < 128 {
 		secretKeyLength = 128
 	}
 
@@ -46,8 +46,8 @@ func (k *Keys) GenerateSecretKey() string {
 	timestamp := uint64(time.Now().UnixNano())
 	timestampHex := fmt.Sprintf("%016x", timestamp)
 
-	// 2. 生成12位随机数（6字节）
-	randomBytes := make([]byte, k.SecretKeyLength-len(timestampHex)-4)
+	// 2. 生成N字节随机数（字节）
+	randomBytes := make([]byte, (k.SecretKeyLength-20)/8)
 	_, _ = rand.Read(randomBytes)
 	randomHex := hex.EncodeToString(randomBytes)
 
@@ -55,7 +55,7 @@ func (k *Keys) GenerateSecretKey() string {
 	count := atomic.AddUint64(&counter, 1) % 65536
 	counterHex := fmt.Sprintf("%04x", count)
 
-	// 4. 组合成32位ID
+	// 4. 组合成N位ID
 	return timestampHex + randomHex + counterHex
 }
 
@@ -64,8 +64,8 @@ func (k *Keys) GenerateAccessKey() string {
 	timestamp := uint64(time.Now().UnixNano())
 	timestampHex := fmt.Sprintf("%016x", timestamp)
 
-	// 2. 生成12位随机数（6字节）
-	randomBytes := make([]byte, k.AccessKeyLength-len(timestampHex)-4)
+	// 2. 生成N字节随机数
+	randomBytes := make([]byte, (k.AccessKeyLength-20)/8)
 	_, _ = rand.Read(randomBytes)
 	randomHex := hex.EncodeToString(randomBytes)
 
@@ -73,7 +73,7 @@ func (k *Keys) GenerateAccessKey() string {
 	count := atomic.AddUint64(&counter, 1) % 65536
 	counterHex := fmt.Sprintf("%04x", count)
 
-	// 4. 组合成32位ID
+	// 4. 组合成N位ID
 	return timestampHex + randomHex + counterHex
 }
 
