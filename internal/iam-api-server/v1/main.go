@@ -22,7 +22,7 @@ import (
 	"github.com/sis-shen/sup-iam/internal/pkg/jwt"
 	"github.com/sis-shen/sup-iam/internal/pkg/log"
 	"github.com/sis-shen/sup-iam/internal/pkg/middleware"
-	pbv1 "github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v1"
+	"github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v2"
 	"github.com/spf13/pflag"
 	etcdclient "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
@@ -312,7 +312,7 @@ func initGrpcServer(mysqlCli *gorm.DB) *grpc.Server {
 	secretCase := service.NewSecretCase(secretStore)
 
 	handler := rpc.NewAuthQueryHandler(secretCase)
-	pbv1.RegisterAuthQueryServiceServer(grpcServer, handler)
+	pbv2.RegisterAuthQueryServiceServer(grpcServer, handler)
 
 	return grpcServer
 }
