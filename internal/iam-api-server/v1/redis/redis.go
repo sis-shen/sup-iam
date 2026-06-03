@@ -200,3 +200,7 @@ func GetRedisClusterSingleton() *RedisClusterStorage {
 	defer mtx.Unlock()
 	return redisClusterSingleton
 }
+
+func (r *RedisClusterStorage) DB() redis.UniversalClient {
+	return r.db
+}
