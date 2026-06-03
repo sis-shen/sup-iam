@@ -4,7 +4,7 @@ import (
 	"context"
 	"github.com/dgraph-io/ristretto"
 	"github.com/pkg/errors"
-	cachedmodel "github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
+	cachedmodel "github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/model"
 	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/rpc"
 	"sync"
 	"sync/atomic"
@@ -60,19 +60,19 @@ func InitSingleton(cli rpc.RpcClient, opts *Options) (*Cache, error) {
 	return cacheIns, nil
 }
 
-func (c *Cache) GetSecretByAK(accessKey string) (*cachedmodel.Secret, error) {
+func (c *Cache) GetSecretByAK(accessKey string) (*cachedmodel.CachedSecret, error) {
 	value, ok := c.secrets.Load().(*ristretto.Cache).Get(accessKey)
 	if !ok {
 		return nil, ErrSecretNotFound
 	}
-	return value.(*cachedmodel.Secret), nil
+	return value.(*cachedmodel.CachedSecret), nil
 }
-func (c *Cache) GetPolicyListBySecretID(secretID string) ([]*cachedmodel.Policy, error) {
+func (c *Cache) GetPolicyListBySecretID(secretID string) ([]*cachedmodel.CachedPolicy, error) {
 	value, ok := c.policies.Load().(*ristretto.Cache).Get(secretID)
 	if !ok {
 		return nil, ErrPolicyNotFound
 	}
-	return value.([]*cachedmodel.Policy), nil
+	return value.([]*cachedmodel.CachedPolicy), nil
 }
 
 func (c *Cache) ReloadSecrets() error {
