@@ -6,6 +6,7 @@ import (
 	"math"
 )
 
+// TODO 硬编码
 const (
 	UserIDKey = "user_id"
 )
