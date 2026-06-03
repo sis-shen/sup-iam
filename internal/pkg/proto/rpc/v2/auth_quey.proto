@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package proto.v1;
+
+import "model.proto";
+
+option go_package = "github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v2;pbv2";
+
+service AuthQueryService {
+  rpc GetAllSecrets(GetAllSecretsRequest) returns (GetAllSecretsResponse);
+
+  rpc GetAllPolicies(GetAllPoliciesRequest) returns (GetAllPoliciesResponse);
+}
+
+message GetAllSecretsRequest {
+
+}
+
+message GetAllSecretsResponse {
+  repeated Secret secrets = 1;
+}
+
+message GetAllPoliciesRequest {
+}
+
+message GetAllPoliciesResponse {
+  repeated PolicyGroup policy_groups= 1;
+}

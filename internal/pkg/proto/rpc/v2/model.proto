@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package proto.v1;
+
+option go_package = "github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v2;pbv2";
+
+// Secret 密钥信息
+message Secret {
+  string secret_id = 1;
+  string secret_key = 2;  // 用于签名校验的 Secret Key
+  string access_key = 3;  // 用于检验rpc查询的access_key
+  int64  expires_at = 4;  // Unix 时间戳，0 表示永不过期
+
+}
+
+message Policy {
+  string policy_id = 1;
+  string secret_id = 2;
+  string username = 3;
+  string policy_dsl = 4;
+}
+
+message PolicyGroup {
+  repeated Policy policy_group = 1;
+}
