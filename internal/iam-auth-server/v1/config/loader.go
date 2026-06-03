@@ -13,8 +13,7 @@ func Load(configPath string) (*Config, error) {
 	v := viper.New()
 
 	// 1. 设置默认值
-	setDefaults(v)
-
+	cfg := NewConfig()
 	// 2. 导入配置文件
 	if configPath == "" {
 		configPath = autoConfigFilePath()
@@ -31,17 +30,16 @@ func Load(configPath string) (*Config, error) {
 	// 显式绑定重要环境变量
 	LoadEnvVars(v)
 
-	var cfg Config
-	if err := v.Unmarshal(&cfg); err != nil {
+	if err := v.Unmarshal(cfg); err != nil {
 		return nil, fmt.Errorf("解析配置失败: %w", err)
 	}
 
 	// 4. 验证配置
-	if err := validateConfig(&cfg); err != nil {
+	if err := validateConfig(cfg); err != nil {
 		return nil, fmt.Errorf("配置验证失败: %w", err)
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }
 
 func LoadConfigFile(v *viper.Viper, configPath string) (err error) {
@@ -118,52 +116,6 @@ func LoadEnvVars(v *viper.Viper) {
 			fmt.Printf("%s 未绑定: %v\n", key, err)
 		}
 	}
-}
-
-func setDefaults(v *viper.Viper) {
-	// 服务器默认值
-	v.SetDefault("server.host", "0.0.0.0")
-	v.SetDefault("server.port", 8889)
-	v.SetDefault("server.mode", "debug")
-	v.SetDefault("server.read_timeout", "30s")
-	v.SetDefault("server.write_timeout", "30s")
-	v.SetDefault("server.idle_timeout", "120s")
-	v.SetDefault("server.grace_timeout", "10s")
-	v.SetDefault("server.enable_redis_sink", false)
-	v.SetDefault("server.redis_key_prefix", "iam:log:")
-	v.SetDefault("server.sink_level", "")
-
-	// gRPC默认值
-	v.SetDefault("grpc.host", "127.0.0.1")
-	v.SetDefault("grpc.port", 9090)
-	v.SetDefault("grpc.etcd_server_discovery", false)
-	v.SetDefault("grpc.service_name", "")
-
-	// Redis默认值
-	v.SetDefault("redis.host", "127.0.0.1")
-	v.SetDefault("redis.port", 6379)
-	v.SetDefault("redis.database_name", 0)
-	v.SetDefault("redis.health_check_interval", "10s")
-	v.SetDefault("redis.pool_size", 10)
-	v.SetDefault("redis.min_idle_conns", 5)
-	v.SetDefault("redis.max_idle_conns", 10)
-	v.SetDefault("redis.conn_max_idle_time", "5m")
-	v.SetDefault("redis.conn_max_lifetime", "1h")
-	v.SetDefault("redis.dial_timeout", "5s")
-	v.SetDefault("redis.read_timeout", "3s")
-	v.SetDefault("redis.write_timeout", "3s")
-	v.SetDefault("redis.pool_timeout", "4s")
-
-	// 日志默认值
-	v.SetDefault("log.level", "info")
-	v.SetDefault("log.format", "console")
-	v.SetDefault("log.output-paths", []string{"stdout"})
-	v.SetDefault("log.error-output-paths", []string{"stderr"})
-	v.SetDefault("log.disable-caller", false)
-	v.SetDefault("log.disable-stacktrace", false)
-	v.SetDefault("log.enable-color", false)
-	v.SetDefault("log.development", false)
-	v.SetDefault("log.name", "")
 }
 
 func autoConfigFilePath() string {
