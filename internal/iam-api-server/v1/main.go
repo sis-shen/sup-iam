@@ -12,10 +12,10 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/redis/go-redis/v9"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/cache"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/config"
 	server "github.com/sis-shen/sup-iam/internal/iam-api-server/v1/iamapiserver"
+	storeredis "github.com/sis-shen/sup-iam/internal/iam-api-server/v1/redis"
 	mysqlDB "github.com/sis-shen/sup-iam/internal/iam-api-server/v1/repository/mysql"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/rpc"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/service"
@@ -52,6 +52,7 @@ type shutdownResources struct {
 	etcdLeaseID   etcdclient.LeaseID
 	etcdCli       *etcdclient.Client
 	stopKeepAlive chan struct{}
+	stopChan      chan struct{}
 }
 
 func main() {
@@ -62,6 +63,9 @@ func main() {
 		//显示版本信息后退出
 		fmt.Printf("Version: %s\nBuildTime: %s\nCommitHash: %s\n", Version, BuildTime, CommitHash)
 		return
+	}
+	shutdownRes := &shutdownResources{
+		stopChan: make(chan struct{}),
 	}
 
 	//======== 1.加载配置
@@ -84,28 +88,28 @@ func main() {
 		logger.Errorf("fail to init mysql: %v", err)
 		return
 	}
-	redisCli, err := initRedisWithHealthCheck(*conf.Redis)
+	redisCli, err := storeredis.Init(*conf.Redis)
 	if err != nil {
 		logger.Errorf("fail to init redis: %v", err)
 		return
 	}
+	redisCli = redisCli.WithStopChan(shutdownRes.stopChan)
 
 	if conf.Server.EnableRedisSink {
 		var level log.Level
 		if err := level.UnmarshalText([]byte(conf.Server.SinkLevel)); err != nil {
 			level = log.InfoLevel
 		}
-		logger = log.WrapWithRedis(logger, redisCli,
-			conf.Server.RedisKeyPrefix,
+		logger = log.WrapWithRedis(logger, redisCli.DB(),
+			conf.Server.RedisLogKeyPrefix,
 			level)
 	}
 	jm := initJWTManager(*conf.JWT)
 	jwtMiddleWare := middleware.JWTAuthMiddleware(&jm, conf.JWT.SkipPaths)
-	blackList := cache.NewRedisTokenBlackList(redisCli, conf.Server.BlackListTTL)
+	blackList := cache.NewRedisTokenBlackList(redisCli.DB(), conf.Server.BlackListTTL)
 
 	// =======3. 创建errgroup管理
 	g, ctx := errgroup.WithContext(context.Background())
-	shutdownRes := &shutdownResources{}
 
 	// ========= 4.初始化router
 	routes := initRoutes(logger, mysqlCli, jm, blackList)
@@ -226,7 +230,10 @@ func main() {
 		}
 	}
 
-	err = redisCli.Close()
+	if shutdownRes.stopChan != nil {
+		close(shutdownRes.stopChan)
+	}
+	err = redisCli.DB().Close()
 	if err != nil {
 		logger.Errorf("close redis client in exception: %v", err)
 	}
@@ -428,75 +435,4 @@ func initMySQLWithRetry(conf config.MySQLConfig, logger log.Logger) (*gorm.DB, e
 	}
 
 	return db, nil
-}
-
-// initRedisWithHealthCheck Redis 连接（带健康检查）
-func initRedisWithHealthCheck(conf config.RedisConfig) (*redis.Client, error) {
-	client, err := initRedis(conf)
-	if err != nil {
-		return nil, err
-	}
-
-	// 启动健康检查 goroutine
-	go func() {
-		ticker := time.NewTicker(conf.HealthCheckInterval)
-		defer ticker.Stop()
-
-		ctx := context.Background()
-		for range ticker.C {
-			if err := client.Ping(ctx).Err(); err != nil {
-				fmt.Printf("Redis health check failed: %v\n", err)
-			}
-		}
-	}()
-
-	return client, nil
-}
-
-func initRedis(conf config.RedisConfig) (*redis.Client, error) {
-	// 构建 Redis 客户端
-	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", conf.Host, conf.Port),
-		Password: conf.Password,
-		DB:       getRedisDB(conf.DatabaseName), // 将数据库名称转换为数字
-
-		// 连接池配置
-		PoolSize:        conf.PoolSize,        // 连接池大小
-		MinIdleConns:    conf.MinIdleConns,    // 最小空闲连接数
-		MaxIdleConns:    conf.MaxIdleConns,    // 最大空闲连接数
-		ConnMaxIdleTime: conf.ConnMaxIdleTime, // 连接最大空闲时间
-		ConnMaxLifetime: conf.ConnMaxLifetime, // 连接最大生命周期
-
-		// 超时配置
-		DialTimeout:  conf.DialTimeout,  // 连接超时
-		ReadTimeout:  conf.ReadTimeout,  // 读超时
-		WriteTimeout: conf.WriteTimeout, // 写超时
-		PoolTimeout:  conf.PoolTimeout,  // 连接池获取连接超时
-	})
-
-	// 测试连接
-	ctx := context.Background()
-	if err := client.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("failed to ping redis: %w", err)
-	}
-
-	return client, nil
-}
-
-// getRedisDB 将数据库名称转换为 Redis DB 编号
-// 支持字符串格式: "0", "1", "default" 等
-func getRedisDB(dbName string) int {
-	if dbName == "" {
-		return 0
-	}
-
-	// 尝试转换为整数
-	var db int
-	_, err := fmt.Sscanf(dbName, "%d", &db)
-	if err != nil {
-		// 如果转换失败，使用默认值 0
-		return 0
-	}
-
-	return db
 }
