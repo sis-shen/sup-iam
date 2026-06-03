@@ -4,66 +4,67 @@ package rpc
 
 import (
 	"context"
-	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
-	"github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v1"
-	"strconv"
+	cachedmodel "github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/model"
+	pbv2 "github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v2"
+	"time"
 )
 
-type RpcClientInterface interface {
-	GetSecretByAK(ctx context.Context, accessKey string) (*model.Secret, error)
-	GetPolicyListBySecretID(ctx context.Context, secretID string) ([]*model.Policy, error)
+type RpcClient interface {
+	GetAllSecrets(ctx context.Context) ([]*cachedmodel.CachedSecret, error)
+	GetAllPolicies(ctx context.Context) ([][]*cachedmodel.CachedPolicy, error)
 }
 
 type GRpcClient struct {
-	cli pbv1.AuthQueryServiceClient
+	cli pbv2.AuthQueryServiceClient
 }
 
-func NewGRpcClient(cli pbv1.AuthQueryServiceClient) *GRpcClient {
+func NewGRpcClient(cli pbv2.AuthQueryServiceClient) *GRpcClient {
 	return &GRpcClient{
 		cli: cli,
 	}
 }
 
-var _ RpcClientInterface = (*GRpcClient)(nil)
+var _ RpcClient = (*GRpcClient)(nil)
 
-func (c *GRpcClient) GetSecretByAK(ctx context.Context, accessKey string) (*model.Secret, error) {
-	req := pbv1.GetSecretByAKRequest{
-		AccessKey: accessKey,
-	}
-	resp, err := c.cli.GetSecretByAK(ctx, &req)
+func (c *GRpcClient) GetAllSecrets(ctx context.Context) ([]*cachedmodel.CachedSecret, error) {
+	resp, err := c.cli.GetAllSecrets(ctx, &pbv2.GetAllSecretsRequest{})
 	if err != nil {
 		return nil, err
 	}
-	secret := resp.GetSecret()
-	return &model.Secret{
-		SecretKey: secret.GetSecretKey(),
-		AccessKey: secret.GetAccessKey(),
-		Expires:   secret.GetExpiresAt(),
-	}, nil
+	result := make([]*cachedmodel.CachedSecret, 0, len(resp.Secrets))
+	for _, secret := range resp.Secrets {
+		cached := &cachedmodel.CachedSecret{
+			AccessKey: secret.AccessKey,
+			SecretKey: secret.SecretKey,
+			ExpiredAt: time.Unix(secret.ExpiresAt, 0),
+			ID:        secret.SecretId,
+		}
+		result = append(result, cached)
+	}
+	return result, nil
 }
 
-func (c *GRpcClient) GetPolicyListBySecretID(ctx context.Context, secretID string) ([]*model.Policy, error) {
-	req := pbv1.GetPolicyBySecretIDRequest{
-		SecretId: secretID,
-	}
-	resp, err := c.cli.GetPolicyBySecretID(ctx, &req)
+func (c *GRpcClient) GetAllPolicies(ctx context.Context) ([][]*cachedmodel.CachedPolicy, error) {
+	resp, err := c.cli.GetAllPolicies(ctx, &pbv2.GetAllPoliciesRequest{})
 	if err != nil {
 		return nil, err
 	}
-	lst := resp.GetPolicyList()
-	res := make([]*model.Policy, len(lst))
-	for i, policy := range lst {
-		id, err := strconv.ParseUint(policy.GetPolicyId(), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-
-		dsl := policy.GetPolicyDsl()
-		res[i] = &model.Policy{
-			ID:           id,
-			Username:     policy.GetUsername(),
-			PolicyShadow: &dsl,
+	result := make([][]*cachedmodel.CachedPolicy, 0, len(resp.PolicyGroups))
+	for _, group := range resp.PolicyGroups {
+		policyGroup := group.PolicyGroup
+		if len(policyGroup) > 0 {
+			policies := make([]*cachedmodel.CachedPolicy, 0, len(policyGroup))
+			for _, policy := range policyGroup {
+				policies = append(policies, &cachedmodel.CachedPolicy{
+					SecretID: policy.SecretId,
+					Username: policy.Username,
+					ID:       policy.PolicyId,
+					DSL:      policy.PolicyDsl,
+				})
+			}
+			result = append(result, policies)
 		}
 	}
-	return res, nil
+
+	return result, nil
 }
