@@ -22,4 +22,6 @@ type VerifyRequest struct {
 	Timestamp int64 `json:"timestamp"`
 
 	Signature string `json:"signature"`
+
+	Username string `json:"username"`
 }
