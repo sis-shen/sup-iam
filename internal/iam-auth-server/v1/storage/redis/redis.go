@@ -304,3 +304,7 @@ func (r *RedisClusterStorage) RegisterPubSubHandler(channel string, callback fun
 	}
 	return nil
 }
+
+func (r *RedisClusterStorage) DB() redis.UniversalClient {
+	return r.db
+}
