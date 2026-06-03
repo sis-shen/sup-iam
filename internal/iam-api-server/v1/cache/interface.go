@@ -18,11 +18,11 @@ type TokenBlackListInterface interface {
 }
 
 type RedisTokenBlackList struct {
-	client *redis.Client
+	client redis.UniversalClient
 	ttl    time.Duration
 }
 
-func NewRedisTokenBlackList(client *redis.Client, ttl time.Duration) *RedisTokenBlackList {
+func NewRedisTokenBlackList(client redis.UniversalClient, ttl time.Duration) *RedisTokenBlackList {
 	return &RedisTokenBlackList{
 		client: client,
 		ttl:    ttl,
