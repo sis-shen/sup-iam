@@ -124,7 +124,7 @@ func (r *RedisClusterStorageManager) Init(conf interface{}) error {
 }
 
 func (r *RedisClusterStorageManager) Connect() error {
-	if r.db == nil {
+	if redisClusterSingleton == nil {
 		log.Debug("Connecting to Redis")
 		r.db = newRedisClusterPool(false, r.Config)
 		return nil
@@ -152,6 +152,7 @@ func (r *RedisClusterStorageManager) ensureConnection() error {
 			return nil
 		}
 		// 连接无效，重置
+		_ = r.db.Close()
 		r.db = nil
 	}
 
@@ -168,20 +169,19 @@ func (r *RedisClusterStorageManager) ensureConnection() error {
 		}
 
 		// 尝试连接
-		if err := r.Connect(); err == nil {
-			// 连接成功，验证一下
-			ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		r.db = newRedisClusterPool(true, r.Config)
+		if r.db != nil {
 
-			if _, pingErr := r.db.Ping(ctx).Result(); pingErr == nil {
+			if _, pingErr := r.db.Ping(context.Background()).Result(); pingErr == nil {
 				log.Info("Redis connection established successfully")
-				cancel()
 				return nil
 			} else {
 				// Ping 失败，继续重试
-				cancel()
 				log.Warnf("Ping failed after Connect: %v", pingErr)
+				_ = r.db.Close()
 				r.db = nil
 			}
+
 		}
 		log.Warnf("Redis atempting to Connect failed, try time: %d", i)
 
