@@ -53,7 +53,7 @@ func (api *AuthVerifyAPI) VerifyRequest(c *gin.Context) {
 	timeStr := strconv.FormatInt(req.Timestamp, 10)
 	canonicalString := api.service.BuildCanonicalString(req.AccessKey, req.Method, req.Path, req.ContentHash, timeStr)
 
-	ok, secret, err := api.service.VerifySecretKey(c, req.AccessKey, canonicalString, req.Signature)
+	ok, secret, err := api.service.VerifySecretKey(req.AccessKey, canonicalString, req.Signature)
 	if err != nil {
 		log.Warnf("Verify secret err: %v", err)
 		errRsp := ErrorResponse{
@@ -65,9 +65,6 @@ func (api *AuthVerifyAPI) VerifyRequest(c *gin.Context) {
 	}
 	if !ok {
 		errMsg := "unknown error"
-		if err != nil {
-			errMsg = err.Error()
-		}
 		log.Warnf("invalid secret: %v", errMsg)
 		errRsp := ErrorResponse{
 			Error:            "verify secret failed",
@@ -79,9 +76,6 @@ func (api *AuthVerifyAPI) VerifyRequest(c *gin.Context) {
 
 	if secret.AccessKey != req.AccessKey {
 		errMsg := "unknown error"
-		if err != nil {
-			errMsg = err.Error()
-		}
 		logger.Warnf("verify secret access key err: %v", errMsg)
 		errRsp := ErrorResponse{
 			Error:            "verify secret access key error",
@@ -91,7 +85,7 @@ func (api *AuthVerifyAPI) VerifyRequest(c *gin.Context) {
 		return
 	}
 
-	ok, matched, err := api.service.Authorize(c, strconv.FormatUint(secret.ID, 10), secret.AccessKey, req.Path, req.Method)
+	ok, matched, err := api.service.Authorize(req.Username, secret.AccessKey, req.Path, req.Method)
 	if err != nil {
 		logger.Warnf("Authorize err: %v", err)
 		errRsp := ErrorResponse{
