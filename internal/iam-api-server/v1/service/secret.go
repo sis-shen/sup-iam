@@ -22,6 +22,8 @@ type SecretCaseInterface interface {
 	VerifySecret(secret string, payload string, hashedStr string) (bool, error)
 	GenerateSecretKey() string
 	GenerateAccessKey() string
+	GetAllSecrets(ctx context.Context) ([]*model.Secret, error)
+	GetAllPolicies(ctx context.Context) (map[string][]*model.Policy, error)
 }
 
 type SecretCase struct {
@@ -85,4 +87,11 @@ func (sc *SecretCase) GenerateAccessKey() string {
 
 func (sc *SecretCase) GetSecretBindingPolicy(ctx context.Context, id string, query repository.PageQuery) (repository.PageResult[*model.Policy], error) {
 	return sc.repo.GetPolicyListBySecretID(ctx, id, query)
+}
+
+func (sc *SecretCase) GetAllSecrets(ctx context.Context) ([]*model.Secret, error) {
+	return sc.repo.GetAllSecrets(ctx)
+}
+func (sc *SecretCase) GetAllPolicies(ctx context.Context) (map[string][]*model.Policy, error) {
+	return sc.repo.GetAllPoliciesMap(ctx)
 }
