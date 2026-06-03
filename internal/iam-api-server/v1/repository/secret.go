@@ -15,4 +15,6 @@ type SecretRepository interface {
 	DeleteByID(ctx context.Context, id string) error
 	GetListByUserID(ctx context.Context, id string, query PageQuery) (PageResult[*model.Secret], error)
 	GetPolicyListBySecretID(ctx context.Context, id string, query PageQuery) (PageResult[*model.Policy], error)
+	GetAllSecrets(ctx context.Context) ([]*model.Secret, error)
+	GetAllPoliciesMap(ctx context.Context) (map[string][]*model.Policy, error)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/repository"
+	"github.com/sis-shen/sup-iam/internal/pkg/log"
 	"gorm.io/gorm"
 	"strconv"
 )
@@ -160,5 +161,45 @@ func (ss *SecretStore) GetPolicyListBySecretID(ctx context.Context, secretID str
 		Error; err != nil {
 		result.Total = total
 	}
+	return result, nil
+}
+
+func (ss *SecretStore) GetAllSecrets(ctx context.Context) ([]*model.Secret, error) {
+	db := ss.db.WithContext(ctx).Model(&model.Secret{}).Order("id ASC")
+
+	var secrets []*model.Secret
+	if err := db.Find(&secrets).Error; err != nil {
+		return nil, repoError(err)
+	}
+
+	return secrets, nil
+}
+
+type PolicyWithSecretID struct {
+	*model.Policy
+	SecretID string `gorm:"column:secretID"`
+}
+
+func (ss *SecretStore) GetAllPoliciesMap(ctx context.Context) (map[string][]*model.Policy, error) {
+
+	var policiesWithSecret []PolicyWithSecretID
+	err := ss.db.WithContext(ctx).
+		Table("policies").
+		Select("policies.*, spb.secretID").
+		Joins("JOIN secret_policy_binding spb ON spb.policyID = policies.id").
+		Order("policies.id ASC").
+		Find(&policiesWithSecret).Error
+
+	if err != nil {
+		log.Errorf("Fail to get all policies %v", err)
+		return nil, repoError(err)
+	}
+
+	// 分组
+	result := make(map[string][]*model.Policy)
+	for _, item := range policiesWithSecret {
+		result[item.SecretID] = append(result[item.SecretID], item.Policy)
+	}
+
 	return result, nil
 }
