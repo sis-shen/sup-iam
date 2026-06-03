@@ -3,13 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/redis/go-redis/v9"
+	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/analytics"
 	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/config"
 	server "github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/go"
+	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/load"
+	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/load/cache"
 	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/rpc"
 	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/service"
+	storeredis "github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/storage/redis"
+	"github.com/sis-shen/sup-iam/internal/pkg/keys"
+
 	"github.com/sis-shen/sup-iam/internal/pkg/log"
-	"github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v1"
+	"github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v2"
 	"github.com/spf13/pflag"
 	etcdclient "go.etcd.io/etcd/client/v3"
 	etcdresolver "go.etcd.io/etcd/client/v3/naming/resolver"
@@ -20,7 +25,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 )
 
 var (
@@ -30,9 +34,12 @@ var (
 )
 
 type ShutdownResources struct {
-	httpServer *http.Server
-	grpcConn   *grpc.ClientConn
-	etcdClient *etcdclient.Client
+	httpServer       *http.Server
+	grpcConn         *grpc.ClientConn
+	etcdClient       *etcdclient.Client
+	analyticsManager *analytics.Analytics
+	loader           *load.LoadManager
+	ctx              context.Context
 }
 
 var shutdownRes ShutdownResources
@@ -48,6 +55,7 @@ func main() {
 	}
 
 	shutdownRes = ShutdownResources{}
+	shutdownRes.ctx = context.Background()
 	//======== 1.加载配置
 	conf, err := config.Load("")
 	if err != nil {
@@ -63,21 +71,38 @@ func main() {
 
 	//====== 2. 加载组件
 	logger := log.New(conf.Log)
+	redisCluster, err := storeredis.Init(conf.Redis)
+	if err != nil {
+		logger.Errorf("fail to init redis cluster: %v", err)
+		return
+	}
+	err = redisCluster.EnsureConnection()
+
+	if err != nil {
+		logger.Errorf("fail to connect to redis cluster: %v", err)
+		return
+	}
+	analyticsManager := analytics.NewAnalytics(conf.Analytics, redisCluster)
+	err = analyticsManager.Start()
+	if err != nil {
+		logger.Errorf("fail to start analytics manager: %v", err)
+		return
+	}
+
+	shutdownRes.analyticsManager = analyticsManager
 
 	if conf.Server.EnableRedisSink {
-		redisCli, err := initRedisWithHealthCheck(conf.Redis)
-		if err != nil {
-			logger.Fatalf("fail to init redis client: %v", err)
-			return
-		}
+		redisCli := redisCluster.DB()
+
 		var level log.Level
 		if err := level.UnmarshalText([]byte(conf.Server.SinkLevel)); err != nil {
 			level = log.InfoLevel
 		}
 		logger = log.WrapWithRedis(logger, redisCli,
-			conf.Server.RedisKeyPrefix,
+			conf.Server.RedisLogKeyPrefix,
 			level)
 	}
+
 	conn, err := newGrpcConn(conf.Grpc, logger)
 	if err != nil {
 		logger.Errorf("fail to create grpc conn: %v", err)
@@ -85,14 +110,26 @@ func main() {
 	}
 	shutdownRes.grpcConn = conn
 
-	client := pbv1.NewAuthQueryServiceClient(conn)
+	client := pbv2.NewAuthQueryServiceClient(conn)
+	rpcClient := rpc.NewGRpcClient(client)
+
+	cacheIns, err := cache.InitSingleton(rpcClient, conf.Cache)
+
+	loader := load.NewLoadManager(shutdownRes.ctx, cacheIns, conf.Server.LoadCacheTTL)
+	err = loader.Start()
+	if err != nil {
+		logger.Errorf("fail to start load manager: %v", err)
+	}
+
+	shutdownRes.loader = loader
+
+	keysIns := &keys.Keys{}
 
 	// =======3. 创建errgroup管理
 	g, ctx := errgroup.WithContext(context.Background())
 
 	// ========= 4.初始化router
-	rpcClient := rpc.NewGRpcClient(client)
-	authCase := service.NewAuthCase(rpcClient)
+	authCase := service.NewAuthCase(cacheIns, keysIns, analyticsManager)
 	authAPI := server.NewAuthVerifyAPI(authCase, logger)
 	routes := server.ApiHandleFunctions{
 		AuthVerifyAPI: *authAPI,
@@ -129,6 +166,19 @@ func main() {
 			logger.Infof("unknown error in goroutine")
 		}
 
+		if shutdownRes.ctx != nil {
+			shutdownRes.ctx.Done()
+		}
+
+		if shutdownRes.loader != nil {
+			shutdownRes.loader.ShutDown()
+		}
+
+		// 关闭其它组件
+		if shutdownRes.analyticsManager != nil {
+			analyticsManager.Stop()
+		}
+
 		//关停server
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), conf.Server.GraceTimeout)
 		defer shutdownCancel()
@@ -141,7 +191,7 @@ func main() {
 			}
 		}
 
-		// 2. 关闭 gRPC 客户端连接
+		// 关闭 gRPC 客户端连接
 		if shutdownRes.grpcConn != nil {
 			if err := shutdownRes.grpcConn.Close(); err != nil {
 				logger.Errorf("fail to close grpc connection: %v", err)
@@ -150,7 +200,7 @@ func main() {
 			}
 		}
 
-		// 3. 关闭 etcd 客户端
+		//  关闭 etcd 客户端
 		if shutdownRes.etcdClient != nil {
 			if err := shutdownRes.etcdClient.Close(); err != nil {
 				logger.Errorf("fail to close etcd client: %v", err)
@@ -211,75 +261,4 @@ func newGrpcConn(conf config.GrpcConfig, logger log.Logger) (*grpc.ClientConn, e
 
 		return conn, nil
 	}
-}
-
-// initRedisWithHealthCheck Redis 连接（带健康检查）
-func initRedisWithHealthCheck(conf config.RedisConfig) (*redis.Client, error) {
-	client, err := initRedis(conf)
-	if err != nil {
-		return nil, err
-	}
-
-	// 启动健康检查 goroutine
-	go func() {
-		ticker := time.NewTicker(conf.HealthCheckInterval)
-		defer ticker.Stop()
-
-		ctx := context.Background()
-		for range ticker.C {
-			if err := client.Ping(ctx).Err(); err != nil {
-				fmt.Printf("Redis health check failed: %v\n", err)
-			}
-		}
-	}()
-
-	return client, nil
-}
-
-func initRedis(conf config.RedisConfig) (*redis.Client, error) {
-	// 构建 Redis 客户端
-	client := redis.NewClient(&redis.Options{
-		Addr:     fmt.Sprintf("%s:%d", conf.Host, conf.Port),
-		Password: conf.Password,
-		DB:       getRedisDB(conf.DatabaseName), // 将数据库名称转换为数字
-
-		// 连接池配置
-		PoolSize:        conf.PoolSize,        // 连接池大小
-		MinIdleConns:    conf.MinIdleConns,    // 最小空闲连接数
-		MaxIdleConns:    conf.MaxIdleConns,    // 最大空闲连接数
-		ConnMaxIdleTime: conf.ConnMaxIdleTime, // 连接最大空闲时间
-		ConnMaxLifetime: conf.ConnMaxLifetime, // 连接最大生命周期
-
-		// 超时配置
-		DialTimeout:  conf.DialTimeout,  // 连接超时
-		ReadTimeout:  conf.ReadTimeout,  // 读超时
-		WriteTimeout: conf.WriteTimeout, // 写超时
-		PoolTimeout:  conf.PoolTimeout,  // 连接池获取连接超时
-	})
-
-	// 测试连接
-	ctx := context.Background()
-	if err := client.Ping(ctx).Err(); err != nil {
-		return nil, fmt.Errorf("failed to ping redis: %w", err)
-	}
-
-	return client, nil
-}
-
-// getRedisDB 将数据库名称转换为 Redis DB 编号
-// 支持字符串格式: "0", "1", "default" 等
-func getRedisDB(dbName string) int {
-	if dbName == "" {
-		return 0
-	}
-
-	// 尝试转换为整数
-	var db int
-	_, err := fmt.Sscanf(dbName, "%d", &db)
-	if err != nil {
-		// 如果转换失败，使用默认值 0
-		return 0
-	}
-
-	return db
 }
