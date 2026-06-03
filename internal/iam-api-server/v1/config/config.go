@@ -2,31 +2,32 @@ package config
 
 import (
 	"github.com/sis-shen/sup-iam/internal/pkg/log"
+	genericoptions "github.com/sis-shen/sup-iam/internal/pkg/options"
 	"time"
 )
 
 type AppConfig struct {
-	Server     *ServerConfig `mapstructure:"server"`
-	JWT        *JWTConfig    `mapstructure:"jwt"`
-	MySQL      *MySQLConfig  `mapstructure:"mysql"`
-	Redis      *RedisConfig  `mapstructure:"redis"`
-	Log        *log.Options  `mapstructure:"log"`
-	GrpcConfig *GrpcConfig   `mapstructure:"grpc"`
+	Server     *ServerConfig                `mapstructure:"server"`
+	JWT        *JWTConfig                   `mapstructure:"jwt"`
+	MySQL      *MySQLConfig                 `mapstructure:"mysql"`
+	Redis      *genericoptions.RedisOptions `mapstructure:"redis"`
+	Log        *log.Options                 `mapstructure:"log"`
+	GrpcConfig *GrpcConfig                  `mapstructure:"grpc"`
 }
 
 // ServerConfig 服务器配置
 type ServerConfig struct {
-	Host            string        `mapstructure:"host"`
-	Port            int           `mapstructure:"port"`
-	Mode            string        `mapstructure:"mode"` // debug/release/test
-	ReadTimeout     time.Duration `mapstructure:"read_timeout"`
-	WriteTimeout    time.Duration `mapstructure:"write_timeout"`
-	IdleTimeout     time.Duration `mapstructure:"idle_timeout"`
-	BlackListTTL    time.Duration `mapstructure:"black_list_ttl"`
-	GraceTimeout    time.Duration `mapstructure:"grace_timeout"`
-	EnableRedisSink bool          `mapstructure:"enable_redis_sink"`
-	RedisKeyPrefix  string        `mapstructure:"redis_key_prefix"`
-	SinkLevel       string        `mapstructure:"sink_level"`
+	Host              string        `mapstructure:"host"`
+	Port              int           `mapstructure:"port"`
+	Mode              string        `mapstructure:"mode"` // debug/release/test
+	ReadTimeout       time.Duration `mapstructure:"read_timeout"`
+	WriteTimeout      time.Duration `mapstructure:"write_timeout"`
+	IdleTimeout       time.Duration `mapstructure:"idle_timeout"`
+	BlackListTTL      time.Duration `mapstructure:"black_list_ttl"`
+	GraceTimeout      time.Duration `mapstructure:"grace_timeout"`
+	EnableRedisSink   bool          `mapstructure:"enable_redis_sink"`
+	RedisLogKeyPrefix string        `mapstructure:"redis_key_prefix"`
+	SinkLevel         string        `mapstructure:"sink_level"`
 }
 
 type JWTConfig struct {
@@ -49,25 +50,6 @@ type MySQLConfig struct {
 	MaxOpenConns    int           `mapstructure:"max_open_conns"`
 	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
 	MaxRetries      int           `mapstructure:"max_retries"`
-}
-
-type RedisConfig struct {
-	Host                string        `mapstructure:"host"`
-	Port                int           `mapstructure:"port"`
-	Password            string        `mapstructure:"password"`
-	DatabaseName        string        `mapstructure:"database_name"`
-	HealthCheckInterval time.Duration `mapstructure:"health_check_interval"`
-	//连接配置
-	PoolSize        int           `mapstructure:"pool_size"`
-	MinIdleConns    int           `mapstructure:"min_idle_conns"`
-	MaxIdleConns    int           `mapstructure:"max_idle_conns"`
-	ConnMaxIdleTime time.Duration `mapstructure:"conn_max_idle_time"`
-	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
-	// 超时配置
-	DialTimeout  time.Duration `mapstructure:"dial_timeout"`
-	ReadTimeout  time.Duration `mapstructure:"read_timeout"`
-	WriteTimeout time.Duration `mapstructure:"write_timeout"`
-	PoolTimeout  time.Duration `mapstructure:"pool_timeout"`
 }
 
 type GrpcConfig struct {

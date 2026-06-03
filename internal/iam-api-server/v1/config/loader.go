@@ -2,9 +2,12 @@ package config
 
 import (
 	"fmt"
+	"github.com/sis-shen/sup-iam/internal/pkg/log"
+	genericoptions "github.com/sis-shen/sup-iam/internal/pkg/options"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -13,7 +16,7 @@ func Load(configPath string) (*AppConfig, error) {
 	v := viper.New()
 
 	// 1. 设置默认值
-	setDefaults(v)
+	cfg := NewConfig()
 
 	// 2.导入配置文件
 	if configPath == "" {
@@ -31,17 +34,16 @@ func Load(configPath string) (*AppConfig, error) {
 	// 显式绑定重要环境变量
 	LoadEnvVars(v)
 
-	var cfg AppConfig
-	if err := v.Unmarshal(&cfg); err != nil {
+	if err := v.Unmarshal(cfg); err != nil {
 		return nil, fmt.Errorf("解析配置失败: %w", err)
 	}
 
 	// 5. 验证配置
-	if err := validateConfig(&cfg); err != nil {
+	if err := validateConfig(cfg); err != nil {
 		return nil, fmt.Errorf("配置验证失败: %w", err)
 	}
 
-	return &cfg, nil
+	return cfg, nil
 }
 
 func LoadConfigFile(v *viper.Viper, configPath string) (err error) {
@@ -100,22 +102,6 @@ func LoadEnvVars(v *viper.Viper) {
 		"mysql.conn_max_lifetime": "IAM_MYSQL_CONN_MAX_LIFETIME",
 		"mysql.max_retries":       "IAM_MYSQL_MAX_RETRIES",
 
-		// Redis
-		"redis.host":                  "IAM_REDIS_HOST",
-		"redis.port":                  "IAM_REDIS_PORT",
-		"redis.password":              "IAM_REDIS_PASSWORD",
-		"redis.database_name":         "IAM_REDIS_DATABASE_NAME",
-		"redis.health_check_interval": "IAM_REDIS_HEALTH_CHECK_INTERVAL",
-		"redis.pool_size":             "IAM_REDIS_POOL_SIZE",
-		"redis.min_idle_conns":        "IAM_REDIS_MIN_IDLE_CONNS",
-		"redis.max_idle_conns":        "IAM_REDIS_MAX_IDLE_CONNS",
-		"redis.conn_max_idle_time":    "IAM_REDIS_CONN_MAX_IDLE_TIME",
-		"redis.conn_max_lifetime":     "IAM_REDIS_CONN_MAX_LIFETIME",
-		"redis.dial_timeout":          "IAM_REDIS_DIAL_TIMEOUT",
-		"redis.read_timeout":          "IAM_REDIS_READ_TIMEOUT",
-		"redis.write_timeout":         "IAM_REDIS_WRITE_TIMEOUT",
-		"redis.pool_timeout":          "IAM_REDIS_POOL_TIMEOUT",
-
 		// gRPC
 		"grpc.host":                  "IAM_GRPC_HOST",
 		"grpc.port":                  "IAM_GRPC_PORT",
@@ -145,74 +131,54 @@ func LoadEnvVars(v *viper.Viper) {
 	}
 }
 
-func setDefaults(v *viper.Viper) {
-	// 服务器默认值
-	v.SetDefault("server.host", "0.0.0.0")
-	v.SetDefault("server.port", 8888)
-	v.SetDefault("server.mode", "debug")
-	v.SetDefault("server.read_timeout", "30s")
-	v.SetDefault("server.write_timeout", "30s")
-	v.SetDefault("server.black_list_ttl", "1h")
-	v.SetDefault("server.idle_timeout", "120s")
-	v.SetDefault("server.grace_timeout", "10s")
-	v.SetDefault("server.enable_redis_sink", false)
-	v.SetDefault("server.redis_key_prefix", "iam:log:")
-	v.SetDefault("server.sink_level", "")
-
-	// JWT默认值
-	v.SetDefault("jwt.access_token_expire_time", "1h")
-	v.SetDefault("jwt.refresh_token_expire_time", "168h")
-	v.SetDefault("jwt.user_id_key", "user_id")
-	v.SetDefault("jwt.token_lookup", "header:Authorization")
-	v.SetDefault("jwt.issuer", "iam-apiserver")
-	v.SetDefault("jwt.skip_paths", []string{"/health", "/api/v1/auth/login", "/api/v1/auth/register"})
-
-	// MySQL默认值
-	v.SetDefault("mysql.host", "127.0.0.1")
-	v.SetDefault("mysql.port", 3306)
-	v.SetDefault("mysql.username", "root")
-	v.SetDefault("mysql.password", "")
-	v.SetDefault("mysql.database_name", "iam")
-	v.SetDefault("mysql.max_idle_conns", 10)
-	v.SetDefault("mysql.max_open_conns", 100)
-	v.SetDefault("mysql.conn_max_lifetime", "1h")
-	v.SetDefault("mysql.max_retries", 3)
-
-	// Redis默认值
-	v.SetDefault("redis.host", "127.0.0.1")
-	v.SetDefault("redis.port", 6379)
-	v.SetDefault("redis.database_name", 0)
-	v.SetDefault("redis.health_check_interval", "10s")
-	v.SetDefault("redis.pool_size", 10)
-	v.SetDefault("redis.min_idle_conns", 5)
-	v.SetDefault("redis.max_idle_conns", 10)
-	v.SetDefault("redis.conn_max_idle_time", "5m")
-	v.SetDefault("redis.conn_max_lifetime", "1h")
-	v.SetDefault("redis.dial_timeout", "5s")
-	v.SetDefault("redis.read_timeout", "3s")
-	v.SetDefault("redis.write_timeout", "3s")
-	v.SetDefault("redis.pool_timeout", "4s")
-
-	// gRPC默认值
-	v.SetDefault("grpc.host", "0.0.0.0")
-	v.SetDefault("grpc.port", 9090)
-	v.SetDefault("grpc.etcd_server_discovery", false)
-	v.SetDefault("grpc.etcd_host", "127.0.0.1")
-	v.SetDefault("grpc.etcd_port", 2379)
-	v.SetDefault("grpc.service_name", "")
-	v.SetDefault("grpc.lease_ttl", "10s")
-	v.SetDefault("grpc.service_address", "")
-
-	// 日志默认值
-	v.SetDefault("log.level", "info")
-	v.SetDefault("log.format", "console")
-	v.SetDefault("log.output-paths", []string{"stdout"})
-	v.SetDefault("log.error-output-paths", []string{"stderr"})
-	v.SetDefault("log.disable-caller", false)
-	v.SetDefault("log.disable-stacktrace", false)
-	v.SetDefault("log.enable-color", false)
-	v.SetDefault("log.development", false)
-	v.SetDefault("log.name", "")
+func NewConfig() *AppConfig {
+	return &AppConfig{
+		Server: &ServerConfig{
+			Host:              "0.0.0.0",
+			Port:              9000,
+			Mode:              "debug",
+			ReadTimeout:       time.Second * 15,
+			WriteTimeout:      time.Second * 15,
+			IdleTimeout:       time.Second * 60,
+			BlackListTTL:      time.Second,
+			GraceTimeout:      time.Second * 60,
+			EnableRedisSink:   true,
+			RedisLogKeyPrefix: "iam-log",
+			SinkLevel:         "info",
+		},
+		JWT: &JWTConfig{
+			SecretKey:              "yourSecretKey",
+			AccessTokenExpireTime:  time.Hour,
+			RefreshTokenExpireTime: 10 * time.Hour,
+			UserIDKey:              "user_id",
+			TokenLookup:            "header:Authorization",
+			Issuer:                 "https://iam.supdriver.ibm.fake",
+			SkipPaths:              nil,
+		},
+		MySQL: &MySQLConfig{
+			Host:            "127.0.0.1",
+			Port:            3306,
+			Username:        "root",
+			Password:        "root",
+			DatabaseName:    "iam",
+			MaxIdleConns:    10,
+			MaxOpenConns:    20,
+			ConnMaxLifetime: time.Hour,
+			MaxRetries:      10,
+		},
+		GrpcConfig: &GrpcConfig{
+			Host:                "0.0.0.0",
+			Port:                9000,
+			EtcdServerDiscovery: false,
+			EtcdHost:            "127.0.0.1",
+			EtcdPort:            9000,
+			ServiceName:         "iam",
+			LeaseTTL:            time.Hour,
+			ServiceAddress:      "127.0.0.1:9000",
+		},
+		Redis: genericoptions.NewRedisOptions(),
+		Log:   log.NewOptions(),
+	}
 }
 
 func autoConfigFilePath() string {
