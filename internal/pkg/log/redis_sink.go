@@ -8,7 +8,7 @@ import (
 )
 
 type redisWriteSyncer struct {
-	client *redis.Client
+	client redis.UniversalClient
 	key    string
 	ctx    context.Context
 }
@@ -26,7 +26,7 @@ func (w *redisWriteSyncer) Write(p []byte) (n int, err error) {
 func (w *redisWriteSyncer) Sync() error { return nil }
 
 // NewRedisCore 用已有的 Redis 客户端创建 zapcore.Core，可添加到现有 Logger
-func NewRedisCore(client *redis.Client, key string, level Level) zapcore.Core {
+func NewRedisCore(client redis.UniversalClient, key string, level Level) zapcore.Core {
 	ws := &redisWriteSyncer{
 		client: client,
 		key:    key,
@@ -37,7 +37,7 @@ func NewRedisCore(client *redis.Client, key string, level Level) zapcore.Core {
 }
 
 // WrapWithRedis 包装现有 Logger，添加 Redis 输出（不改原 Logger 接口）
-func WrapWithRedis(logger Logger, client *redis.Client, key string, level Level) *zapLogger {
+func WrapWithRedis(logger Logger, client redis.UniversalClient, key string, level Level) *zapLogger {
 	redisCore := NewRedisCore(client, key, level)
 	// 合并原有的 Core 和新的 Redis Core
 	teeCore := zapcore.NewTee(logger.getZapLogger().Core(), redisCore)
