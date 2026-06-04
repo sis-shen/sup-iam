@@ -26,10 +26,10 @@ func (a *AnalyticFilters) ShouldFilter(username string) bool {
 		}
 	})
 
-	if a.SkippedUsernames != nil && a.skippedUsernameSet[username] {
+	if a.SkippedUsernames != nil && len(a.SkippedUsernames) > 0 && a.skippedUsernameSet[username] {
 		return true
 	}
-	if a.Usernames != nil && !a.usernameSet[username] {
+	if a.Usernames != nil && len(a.Usernames) > 0 && !a.usernameSet[username] {
 		return true
 	}
 
@@ -38,5 +38,11 @@ func (a *AnalyticFilters) ShouldFilter(username string) bool {
 }
 
 func (a *AnalyticFilters) HasFilter() bool {
-	return a.Usernames != nil || a.SkippedUsernames != nil
+	if a.Usernames != nil && len(a.Usernames) > 0 {
+		return true
+	}
+	if a.SkippedUsernames != nil && len(a.SkippedUsernames) > 0 {
+		return true
+	}
+	return false
 }
