@@ -1,8 +1,6 @@
 # 请在根目录构建镜像
 FROM golang:1.25.0 AS build
 
-ARG SERVICE_PATH=internal/iam-auth-server/v1
-ARG PKG_PATH=internal/pkg
 ARG VERSION=dev
 ARG COMMIT_HASH=unknown
 ARG BUILD_TIME=unknown
@@ -12,22 +10,10 @@ RUN go env -w GOPROXY=https://goproxy.cn,direct
 COPY go.mod go.sum .
 RUN go mod download
 
-COPY internal/iam-api-server/v1/model ./internal/iam-api-server/v1/model
+COPY internal/iam-auth-server/v1 ./internal/iam-auth-server/v1
+COPY internal/pkg ./internal/pkg
 
-WORKDIR /go/github.com/sis-shen/sup-iam/${PKG_PATH}
-
-COPY ${PKG_PATH}/keys ./keys
-COPY ${PKG_PATH}/log ./log
-COPY ${PKG_PATH}/proto ./proto
-
-
-WORKDIR /go/github.com/sis-shen/sup-iam/${SERVICE_PATH}
-
-COPY ${SERVICE_PATH}/rpc ./rpc
-COPY ${SERVICE_PATH}/service ./service
-COPY ${SERVICE_PATH}/config ./config
-COPY ${SERVICE_PATH}/main.go .
-COPY ${SERVICE_PATH}/go ./go
+WORKDIR /go/github.com/sis-shen/sup-iam/internal/iam-auth-server/v1
 
 
 RUN CGO_ENABLED=0 GOOS=linux go build \

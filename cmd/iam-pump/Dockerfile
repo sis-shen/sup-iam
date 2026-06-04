@@ -14,24 +14,8 @@ RUN go mod download
 
 COPY cmd/iam-pump/main.go ./cmd/iam-pump/main.go
 
-WORKDIR /go/github.com/sis-shen/sup-iam/${PKG_PATH}
-
-COPY ${PKG_PATH}/log ./log
-COPY ${PKG_PATH}/testutil ./testutil
-COPY ${PKG_PATH}/server ./server
-COPY ${PKG_PATH}/options ./options
-
-
-WORKDIR /go/github.com/sis-shen/sup-iam/${APP_PATH}
-
-COPY ${APP_PATH}/analytics ./analytics
-COPY ${APP_PATH}/store ./store
-COPY ${APP_PATH}/options ./options
-COPY ${APP_PATH}/pumps ./pumps
-COPY ${APP_PATH}/config ./config
-COPY ${APP_PATH}/app.go ./app.go
-COPY ${APP_PATH}/run.go ./run.go
-COPY ${APP_PATH}/server.go ./server.go
+COPY internal/pkg ./internal/pkg
+COPY internal/iam-pump ./internal/iam-pump
 
 WORKDIR /go/github.com/sis-shen/sup-iam/cmd/iam-pump
 
