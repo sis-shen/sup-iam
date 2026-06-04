@@ -69,7 +69,7 @@ func (o *RedisOptions) Validate() []error {
 	if len(o.Addrs) == 0 && o.Host == "" && o.Port == 0 {
 		errs = append(errs, errors.New("addrs or port is required"))
 	}
-	return nil
+	return errs
 }
 
 func LoadEnvVars(v *viper.Viper, prefix string) (err error) {

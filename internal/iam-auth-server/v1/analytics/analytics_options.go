@@ -35,7 +35,7 @@ func (o *AnalyticsOptions) Validate() []error {
 	}
 	errors := []error{}
 
-	if o.Enable && (o.FlushInterval < 1 || o.FlushInterval > 1000) {
+	if o.Enable && (o.FlushInterval < time.Second || o.FlushInterval > 1000*time.Second) {
 		errors = append(errors, fmt.Errorf("--analytics.flush-interval %v must be between 1 and 1000", o.FlushInterval))
 	}
 

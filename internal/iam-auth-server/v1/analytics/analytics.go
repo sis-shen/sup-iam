@@ -108,7 +108,7 @@ func (r *Analytics) recordWorker() {
 			}
 
 			if encoded, err := msgpack.Marshal(record); err != nil {
-				log.Errorf("Error msgpack.Marshal", err.Error())
+				log.Errorf("Error msgpack.Marshal %s", err.Error())
 			} else {
 				recordsBuffer = append(recordsBuffer, encoded)
 			}
