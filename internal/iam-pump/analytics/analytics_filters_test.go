@@ -22,14 +22,14 @@ func TestAnalyticFilters_HasFilter(t *testing.T) {
 			filters: &AnalyticFilters{
 				Usernames: []string{"alice"},
 			},
-			want: false,
+			want: true,
 		},
 		{
 			name: "only SkippedUsernames set",
 			filters: &AnalyticFilters{
 				SkippedUsernames: []string{"bob"},
 			},
-			want: false,
+			want: true,
 		},
 		{
 			name: "both set",
@@ -45,7 +45,7 @@ func TestAnalyticFilters_HasFilter(t *testing.T) {
 				Usernames:        []string{},
 				SkippedUsernames: []string{},
 			},
-			want: true,
+			want: false,
 		},
 	}
 
@@ -125,7 +125,7 @@ func TestAnalyticFilters_ShouldFilter_EmptyLists(t *testing.T) {
 		SkippedUsernames: []string{},
 	}
 
-	assert.True(t, f.ShouldFilter("anyone"), "with empty lists, everyone is effectively filtered")
+	assert.False(t, f.ShouldFilter("anyone"), "with empty lists, everyone is not filtered")
 }
 
 func TestAnalyticFilters_ShouldFilter_OnceInitialization(t *testing.T) {
