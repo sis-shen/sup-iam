@@ -17,7 +17,7 @@ server:
   # 空闲超时
   idle_timeout: 120s
   # 黑名单过期时间
-  black_list_ttl: 1h
+  black_list_ttl: 1s
   # 优雅关闭超时
   grace_timeout: 10s
   # 日志是否同步写入Redis
@@ -25,12 +25,12 @@ server:
   # 日志在Redis中的key前缀
   redis_key_prefix: "iam:log:"
   # 日志同步级别（debug/info/warn/error），为空则同步所有级别
-  sink_level: ""
+  sink_level: "info"
 
 # ========== JWT配置 ==========
 jwt:
   # JWT签名密钥（生产环境务必修改并通过环境变量 IAM_JWT_SECRET_KEY 注入）
-  secret_key: "your-super-secret-jwt-key-change-in-production"
+  secret_key: ""
   # Access Token 过期时间
   access_token_expire_time: 1h
   # Refresh Token 过期时间
@@ -50,7 +50,7 @@ jwt:
 # ========== MySQL配置 ==========
 mysql:
   # 数据库主机地址（可通过环境变量 IAM_MYSQL_HOST 覆盖）
-  host: "127.0.0.1"
+  host: "mysql-dev"
   # 数据库端口
   port: 3306
   # 数据库用户名（可通过环境变量 IAM_MYSQL_USERNAME 覆盖）
@@ -70,33 +70,26 @@ mysql:
 
 # ========== Redis配置 ==========
 redis:
-  # Redis主机地址（可通过环境变量 IAM_REDIS_HOST 覆盖）
-  host: "127.0.0.1"
-  # Redis端口
+  host: "redis-dev"
   port: 6379
-  # Redis密码（可通过环境变量 IAM_REDIS_PASSWORD 注入）
+  addrs: []                       # 集群地址列表（优先于 host+port）
+  username: "iam"
   password: ""
-  # Redis数据库编号
   database_name: 0
-  # 健康检查间隔
-  health_check_interval: 10s
-  # 连接池大小
+  health_check_interval: 5s
+  enable_cluster: true
+  master_name: ""
+  use_ssl: false
+  ssl_insecure_skip_verify: false
   pool_size: 10
-  # 最小空闲连接数
+  max_active_conns: 100
   min_idle_conns: 5
-  # 最大空闲连接数
   max_idle_conns: 10
-  # 连接最大空闲时间
   conn_max_idle_time: 5m
-  # 连接最大存活时间
   conn_max_lifetime: 1h
-  # 拨号超时
   dial_timeout: 5s
-  # 读取超时
   read_timeout: 3s
-  # 写入超时
   write_timeout: 3s
-  # 连接池获取超时
   pool_timeout: 4s
 
 # ========== gRPC配置 ==========
@@ -112,7 +105,7 @@ grpc:
   # etcd服务发现开关
   etcd_server_discovery: false
   # etcd服务地址
-  etcd_host: "127.0.0.1"
+  etcd_host: "etcd-dev"
   # etcd服务端口
   etcd_port: 2379
   # gRPC服务名称（开启etcd服务发现时需要配置）
@@ -143,4 +136,4 @@ log:
   # 是否为开发模式
   development: false
   # 日志记录器名称
-  name: ""
+  name: "iam"

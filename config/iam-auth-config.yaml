@@ -6,7 +6,7 @@ server:
   # 服务器监听地址
   host: "0.0.0.0"
   # 服务器监听端口（可通过环境变量 IAM_SERVER_PORT 覆盖）
-  port: 8889
+  port: 8443
   # 运行模式: debug/release/test
   # debug模式会输出详细日志，release模式会优化性能
   mode: "debug"
@@ -23,12 +23,12 @@ server:
   # 日志在Redis中的key前缀
   redis_key_prefix: "iam:log:"
   # 日志同步级别（debug/info/warn/error），为空则同步所有级别
-  sink_level: ""
+  sink_level: "info"
 
 # ========== gRPC配置 ==========
 grpc:
   # gRPC服务端地址（IAM API Server 的 gRPC 地址）
-  host: "127.0.0.1"
+  host: "rpc-dev"
   # gRPC服务端端口（可通过环境变量 IAM_GRPC_PORT 覆盖）
   port: 9090
   # 是否启用 etcd 服务发现（可通过环境变量 IAM_GRPC_ETCD_SERVER_DISCOVERY 覆盖）
@@ -38,39 +38,32 @@ grpc:
 
 # ========== Redis配置 ==========
 redis:
-  # Redis主机地址
-  host: "127.0.0.1"
-  # Redis端口
+  host: "redis-dev"
   port: 6379
-  # Redis密码
+  addrs: []                       # 集群地址列表（优先于 host+port）
+  username: "iam"
   password: ""
-  # Redis数据库编号
   database_name: 0
-  # 健康检查间隔
-  health_check_interval: 10s
-  # 连接池大小
+  health_check_interval: 5s
+  enable_cluster: true
+  master_name: ""
+  use_ssl: false
+  ssl_insecure_skip_verify: false
   pool_size: 10
-  # 最小空闲连接数
+  max_active_conns: 100
   min_idle_conns: 5
-  # 最大空闲连接数
   max_idle_conns: 10
-  # 连接最大空闲时间
   conn_max_idle_time: 5m
-  # 连接最大存活时间
   conn_max_lifetime: 1h
-  # 拨号超时
   dial_timeout: 5s
-  # 读取超时
   read_timeout: 3s
-  # 写入超时
   write_timeout: 3s
-  # 连接池获取超时
   pool_timeout: 4s
 
 # ========== 日志配置 ==========
 log:
   # 日志级别: debug/info/warn/error/panic/fatal
-  level: "info"
+  level: "debug"
   # 日志输出格式: console/json
   format: "console"
   # 日志输出路径
@@ -89,3 +82,27 @@ log:
   development: false
   # 日志记录器名称
   name: ""
+
+analytics:
+  # 是否启用审计日志
+  enabled: true
+  # 工作池大小
+  pool_size: 10
+  # 日志记录缓冲区大小（条数）
+  record_buffer_size: 1024
+  # 日志刷新间隔
+  flush_interval: 5s
+  # 日志过期时间
+  storage_expiration: 24h
+  # 是否详省略细记录
+  enable_detail_recording: true
+  # RedisKey
+  analytics_key_name: "analytics"
+
+cache:
+  # 访问平率计数器数量
+  num_counters: 1000
+  # 缓存最大容量
+  max_cost: 1 *1024 * 1024 * 1024  # 1GB
+  # Get操作缓冲区通道大小
+  buffer_items: 64

@@ -1,13 +1,14 @@
 package options
 
 import (
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/sis-shen/sup-iam/internal/iam-pump/analytics"
 	"github.com/sis-shen/sup-iam/internal/pkg/log"
 	genericoptions "github.com/sis-shen/sup-iam/internal/pkg/options"
 	"github.com/spf13/viper"
-	"os"
-	"path/filepath"
-	"time"
 )
 
 type PumpOptions struct {
@@ -23,7 +24,7 @@ type Options struct {
 	LeaderLeaseDuration time.Duration                `mapstructure:"leader_lease_duration"`
 	PurgeInterval       time.Duration                `mapstructure:"purge_interval"`
 	HealthCheckPath     string                       `mapstructure:"health_check_path"`
-	HealthCheckAddress  string                       `mapstructure:"health_check_interval"`
+	HealthCheckAddress  string                       `mapstructure:"health_check_address"`
 	OmitDetailRecoding  bool                         `mapstructure:"omit_detail_recoding"`
 	RedisOptions        *genericoptions.RedisOptions `mapstructure:"redis_options"`
 	Log                 *log.Options                 `mapstructure:"log"`
