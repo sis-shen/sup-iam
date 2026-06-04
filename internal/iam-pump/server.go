@@ -168,6 +168,9 @@ func execPumpWriting(wg *sync.WaitGroup, pump pumps.PumpInterface, keys *[]inter
 
 func filterData(pump pumps.PumpInterface, keys []interface{}) []interface{} {
 	filters := pump.GetFilters()
+	if filters == nil {
+		return keys
+	}
 	if !filters.HasFilter() && !pump.GetOmitDetailEnable() {
 		return keys
 	}
