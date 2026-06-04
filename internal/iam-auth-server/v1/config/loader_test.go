@@ -17,21 +17,16 @@ func writeTestConfig(t *testing.T, path, content string) {
 	t.Cleanup(func() { os.Remove(path) })
 }
 
-func TestSetDefaults(t *testing.T) {
-	v := viper.New()
-	setDefaults(v)
-	assert.Equal(t, "0.0.0.0", v.GetString("server.host"))
-	assert.Equal(t, 8889, v.GetInt("server.port"))
-	assert.Equal(t, "debug", v.GetString("server.mode"))
-	assert.Equal(t, 9090, v.GetInt("grpc.port"))
-	assert.Equal(t, "info", v.GetString("log.level"))
-	assert.Equal(t, "console", v.GetString("log.format"))
+func TestNewConfig(t *testing.T) {
+	cfg := NewConfig()
+	require.NotNil(t, cfg)
+	assert.Equal(t, "0.0.0.0", cfg.Server.Host)
+	assert.Equal(t, 8080, cfg.Server.Port)
+	assert.Equal(t, "debug", cfg.Server.Mode)
+	assert.Equal(t, 8080, cfg.Grpc.Port)
 }
 
 func TestLoadConfigFile_Success(t *testing.T) {
-	v := viper.New()
-	setDefaults(v)
-
 	configDir := t.TempDir()
 	configPath := filepath.Join(configDir, "config.yaml")
 	writeTestConfig(t, configPath, `
@@ -41,39 +36,39 @@ grpc:
   port: 8080
 `)
 
-	err := LoadConfigFile(v, configPath)
+	cfg, err := Load(configPath)
 	require.NoError(t, err)
-	assert.Equal(t, 9999, v.GetInt("server.port"))
-	assert.Equal(t, 8080, v.GetInt("grpc.port"))
+	assert.Equal(t, 9999, cfg.Server.Port)
+	assert.Equal(t, 8080, cfg.Grpc.Port)
 }
 
 func TestLoadConfigFile_EmptyPath(t *testing.T) {
-	// 切换到临时目录以避免误用当前目录下的 config.yaml
 	origDir, _ := os.Getwd()
 	tmpDir := t.TempDir()
 	err := os.Chdir(tmpDir)
 	require.NoError(t, err)
 	t.Cleanup(func() { os.Chdir(origDir) })
 
-	v := viper.New()
-	err = LoadConfigFile(v, "")
-	assert.Error(t, err)
+	// Load 吞掉配置文件读取错误，返回默认配置
+	cfg, err := Load("")
+	require.NoError(t, err)
+	assert.Equal(t, 8080, cfg.Server.Port)
 }
 
 func TestLoadConfigFile_FileNotFound(t *testing.T) {
-	v := viper.New()
-	err := LoadConfigFile(v, "/nonexistent/path/config.yaml")
-	assert.Error(t, err)
+	// Load 吞掉配置文件读取错误，返回默认配置
+	cfg, err := Load("/nonexistent/path/config.yaml")
+	require.NoError(t, err)
+	assert.Equal(t, 8080, cfg.Server.Port)
 }
 
 func TestLoadEnvVars_Bind(t *testing.T) {
 	v := viper.New()
-	setDefaults(v)
-
 	// LoadEnvVars 不应 panic
 	LoadEnvVars(v)
-	// 验证绑定成功
-	assert.Equal(t, "debug", v.GetString("server.mode"))
+	// 设置环境变量后 viper 能正确读取
+	t.Setenv("IAM_SERVER_MODE", "release")
+	assert.Equal(t, "release", v.GetString("server.mode"))
 }
 
 func TestLoad_Success(t *testing.T) {
@@ -206,16 +201,11 @@ func TestAutoConfigFilePath_Default(t *testing.T) {
 }
 
 func TestValidateConfig_InvalidGRPCPort(t *testing.T) {
-	v := viper.New()
-	setDefaults(v)
-	v.Set("server.port", 8080)
-	v.Set("grpc.port", 99999)
+	cfg := NewConfig()
+	cfg.Server.Port = 8080
+	cfg.Grpc.Port = 99999
 
-	var cfg Config
-	err := v.Unmarshal(&cfg)
-	require.NoError(t, err)
-
-	err = validateConfig(&cfg)
+	err := validateConfig(cfg)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "gRPC端口无效")
 }

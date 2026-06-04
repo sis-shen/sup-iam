@@ -2,63 +2,92 @@ package service
 
 import (
 	"context"
-	"errors"
+	"os"
+	"sync"
 	"testing"
 	"time"
 
-	"github.com/casbin/casbin/v2"
-	casbinmodel "github.com/casbin/casbin/v2/model"
-	appmodel "github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
-	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/rpc/mock"
+	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/analytics"
+	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/load/cache"
+	cachedmodel "github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/model"
+	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/storage"
 	"github.com/sis-shen/sup-iam/internal/pkg/keys"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/mock/gomock"
 )
 
-// newTestKeys creates a Keys instance suitable for testing
-func newTestKeys() keys.Keys {
-	return keys.Keys{}
+// mockRpcClient implements rpc.RpcClient for testing
+type mockRpcClient struct {
+	mu       sync.Mutex
+	secrets  []*cachedmodel.CachedSecret
+	policies [][]*cachedmodel.CachedPolicy
 }
 
-// newTestEnforcer creates a Casbin enforcer with a basic RBAC model for testing
-func newTestEnforcer(t *testing.T) *casbin.Enforcer {
-	t.Helper()
-	m, err := casbinmodel.NewModelFromString(`
-[request_definition]
-r = sub, obj, act
-
-[policy_definition]
-p = sub, obj, act
-
-[policy_effect]
-e = some(where (p.eft == allow))
-
-[matchers]
-m = r.sub == p.sub && keyMatch(r.obj, p.obj) && regexMatch(r.act, p.act)
-`)
-	require.NoError(t, err)
-	e, err := casbin.NewEnforcer(m)
-	require.NoError(t, err)
-	return e
+func (m *mockRpcClient) GetAllSecrets(ctx context.Context) ([]*cachedmodel.CachedSecret, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.secrets, nil
 }
 
-// policyShadow is a helper to create a *string for PolicyShadow
-func policyShadow(s string) *string {
-	return &s
+func (m *mockRpcClient) GetAllPolicies(ctx context.Context) ([][]*cachedmodel.CachedPolicy, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.policies, nil
+}
+
+// mockAnalyticsStore implements storage.AnalyticsStore for testing
+type mockAnalyticsStore struct{}
+
+func (m *mockAnalyticsStore) Connect() error                                               { return nil }
+func (m *mockAnalyticsStore) AppendToSetPipelined(string, [][]byte) error                  { return nil }
+func (m *mockAnalyticsStore) SetExpire(string, time.Duration) error                        { return nil }
+func (m *mockAnalyticsStore) GetExpire(string) (time.Duration, error)                      { return 0, nil }
+func (m *mockAnalyticsStore) SetKeyPrefix(string)                                          {}
+func (m *mockAnalyticsStore) WithStopChan(stopChan <-chan struct{}) storage.AnalyticsStore { return m }
+func (m *mockAnalyticsStore) WithExpireTime(d time.Duration) storage.AnalyticsStore        { return m }
+
+// test helpers
+var (
+	testMockRPC   *mockRpcClient
+	testCache     *cache.Cache
+	testAnalytics *analytics.Analytics
+	testKeys      keys.KeysInterface
+)
+
+func TestMain(m *testing.M) {
+	// 初始化测试依赖（仅执行一次）
+	testMockRPC = &mockRpcClient{}
+	testKeys = keys.NewKeys(32, 128)
+
+	var err error
+	testCache, err = cache.InitSingleton(testMockRPC, &cache.Options{
+		NumCounters: 100,
+		MaxCost:     1000,
+		BufferItems: 64,
+	})
+	if err != nil {
+		os.Exit(1)
+	}
+
+	testAnalytics = analytics.NewAnalytics(
+		analytics.NewAnalyticsOptions(),
+		&mockAnalyticsStore{},
+	)
+
+	os.Exit(m.Run())
+}
+
+// newTestAuthCase creates a fresh AuthCase for testing
+func newTestAuthCase() *AuthCase {
+	return NewAuthCase(testCache, testKeys, testAnalytics)
 }
 
 func TestNewAuthCase(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	mockCli := mock.NewMockRpcClientInterface(ctrl)
-	ac := NewAuthCase(mockCli)
+	ac := newTestAuthCase()
 	require.NotNil(t, ac)
-	require.Equal(t, mockCli, ac.cli)
 }
 
 func TestBuildCanonicalString(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	mockCli := mock.NewMockRpcClientInterface(ctrl)
-	ac := NewAuthCase(mockCli)
+	ac := newTestAuthCase()
 
 	result := ac.BuildCanonicalString("AK123", "POST", "/api/v1/resource", "hash123", "1700000000")
 	expected := "AK123\nPOST\n/api/v1/resource\nhash123\n1700000000"
@@ -66,40 +95,46 @@ func TestBuildCanonicalString(t *testing.T) {
 }
 
 func TestBuildCanonicalString_EmptyFields(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	mockCli := mock.NewMockRpcClientInterface(ctrl)
-	ac := NewAuthCase(mockCli)
+	ac := newTestAuthCase()
 
 	result := ac.BuildCanonicalString("", "", "", "", "")
 	expected := "\n\n\n\n"
 	require.Equal(t, expected, result)
 }
 
-func TestVerifySecretKey_Success(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	mockCli := mock.NewMockRpcClientInterface(ctrl)
-	ac := NewAuthCase(mockCli)
-	k := newTestKeys()
+func setTestSecrets(secrets []*cachedmodel.CachedSecret) {
+	testMockRPC.mu.Lock()
+	testMockRPC.secrets = secrets
+	testMockRPC.mu.Unlock()
+	_ = testCache.ReloadSecrets()
+}
 
-	// Prepare a secret that won't expire
+func setTestPolicies(policies [][]*cachedmodel.CachedPolicy) {
+	testMockRPC.mu.Lock()
+	testMockRPC.policies = policies
+	testMockRPC.mu.Unlock()
+	_ = testCache.ReloadPolicies()
+}
+
+func TestVerifySecretKey_Success(t *testing.T) {
 	secretKey := "test-secret-key-for-signing"
 	accessKey := "AK-test-001"
 	canonicalString := "AK-test-001\nGET\n/resource\nhash\n1700000000"
 
-	// Sign the payload to get the expected signature
-	signature, err := k.SignWithKey(secretKey, canonicalString)
+	signature, err := testKeys.SignWithKey(secretKey, canonicalString)
 	require.NoError(t, err)
 
-	// Set up mock to return a non-expired secret
-	mockCli.EXPECT().
-		GetSecretByAK(gomock.Any(), accessKey).
-		Return(&appmodel.Secret{
-			SecretKey: secretKey,
+	setTestSecrets([]*cachedmodel.CachedSecret{
+		{
 			AccessKey: accessKey,
-			Expires:   time.Now().Add(1 * time.Hour).Unix(),
-		}, nil)
+			SecretKey: secretKey,
+			ID:        "1",
+			ExpiredAt: time.Now().Add(1 * time.Hour),
+		},
+	})
 
-	ok, secret, err := ac.VerifySecretKey(context.Background(), accessKey, canonicalString, signature)
+	ac := newTestAuthCase()
+	ok, secret, err := ac.VerifySecretKey(accessKey, canonicalString, signature)
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.NotNil(t, secret)
@@ -107,201 +142,154 @@ func TestVerifySecretKey_Success(t *testing.T) {
 }
 
 func TestVerifySecretKey_InvalidSignature(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	mockCli := mock.NewMockRpcClientInterface(ctrl)
-	ac := NewAuthCase(mockCli)
-
 	accessKey := "AK-test-002"
-	canonicalString := "AK-test-002\nGET\n/resource\nhash\n1700000000"
 
-	mockCli.EXPECT().
-		GetSecretByAK(gomock.Any(), accessKey).
-		Return(&appmodel.Secret{
-			SecretKey: "real-secret-key",
+	setTestSecrets([]*cachedmodel.CachedSecret{
+		{
 			AccessKey: accessKey,
-			Expires:   time.Now().Add(1 * time.Hour).Unix(),
-		}, nil)
+			SecretKey: "real-secret-key",
+			ID:        "2",
+			ExpiredAt: time.Now().Add(1 * time.Hour),
+		},
+	})
 
-	ok, secret, err := ac.VerifySecretKey(context.Background(), accessKey, canonicalString, "invalid-signature")
+	ac := newTestAuthCase()
+	ok, secret, err := ac.VerifySecretKey(accessKey, "canonical-string", "invalid-signature")
 	require.NoError(t, err)
 	require.False(t, ok)
 	require.NotNil(t, secret)
 }
 
 func TestVerifySecretKey_Expired(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	mockCli := mock.NewMockRpcClientInterface(ctrl)
-	ac := NewAuthCase(mockCli)
-
 	accessKey := "AK-expired"
 
-	mockCli.EXPECT().
-		GetSecretByAK(gomock.Any(), accessKey).
-		Return(&appmodel.Secret{
-			SecretKey: "key",
+	setTestSecrets([]*cachedmodel.CachedSecret{
+		{
 			AccessKey: accessKey,
-			Expires:   time.Now().Add(-1 * time.Hour).Unix(),
-		}, nil)
+			SecretKey: "key",
+			ID:        "3",
+			ExpiredAt: time.Now().Add(-1 * time.Hour),
+		},
+	})
 
-	ok, secret, err := ac.VerifySecretKey(context.Background(), accessKey, "canonical", "signature")
+	ac := newTestAuthCase()
+	ok, secret, err := ac.VerifySecretKey(accessKey, "canonical", "signature")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "secret expired")
 	require.False(t, ok)
 	require.Nil(t, secret)
 }
 
-func TestVerifySecretKey_RPCError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	mockCli := mock.NewMockRpcClientInterface(ctrl)
-	ac := NewAuthCase(mockCli)
+func TestVerifySecretKey_CacheMiss(t *testing.T) {
+	// 清空缓存
+	setTestSecrets(nil)
 
-	mockCli.EXPECT().
-		GetSecretByAK(gomock.Any(), "AK-error").
-		Return(nil, errors.New("rpc connection failed"))
-
-	ok, secret, err := ac.VerifySecretKey(context.Background(), "AK-error", "canonical", "signature")
+	ac := newTestAuthCase()
+	ok, secret, err := ac.VerifySecretKey("AK-not-found", "canonical", "signature")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "rpc connection failed")
 	require.False(t, ok)
 	require.Nil(t, secret)
 }
 
 func TestAuthorize_MatchedPolicy(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	mockCli := mock.NewMockRpcClientInterface(ctrl)
-	e := newTestEnforcer(t)
-	ac := &AuthCase{
-		cli:      mockCli,
-		keys:     keys.Keys{},
-		enforcer: *e,
-	}
+	setTestPolicies([][]*cachedmodel.CachedPolicy{
+		{
+			{
+				ID:       "100",
+				SecretID: "1",
+				Username: "alice",
+				DSL:      `[["alice", "/api/resource", "GET"]]`,
+			},
+		},
+	})
 
-	policyJSON := `[["alice", "/api/resource", "GET"]]`
-	mockCli.EXPECT().
-		GetPolicyListBySecretID(gomock.Any(), "1").
-		Return([]*appmodel.Policy{
-			{ID: 100, PolicyShadow: policyShadow(policyJSON)},
-		}, nil)
-
-	ok, matched, err := ac.Authorize(context.Background(), "1", "alice", "/api/resource", "GET")
+	ac := newTestAuthCase()
+	ok, matched, err := ac.Authorize("1", "alice", "/api/resource", "GET")
 	require.NoError(t, err)
 	require.True(t, ok)
 	require.Equal(t, []string{"100"}, matched)
 }
 
 func TestAuthorize_NoMatchingPolicy(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	mockCli := mock.NewMockRpcClientInterface(ctrl)
-	e := newTestEnforcer(t)
-	ac := &AuthCase{
-		cli:      mockCli,
-		keys:     keys.Keys{},
-		enforcer: *e,
-	}
+	setTestPolicies([][]*cachedmodel.CachedPolicy{
+		{
+			{
+				ID:       "200",
+				SecretID: "2",
+				Username: "bob",
+				DSL:      `[["bob", "/api/other", "POST"]]`,
+			},
+		},
+	})
 
-	policyJSON := `[["bob", "/api/other", "POST"]]`
-	mockCli.EXPECT().
-		GetPolicyListBySecretID(gomock.Any(), "2").
-		Return([]*appmodel.Policy{
-			{ID: 200, PolicyShadow: policyShadow(policyJSON)},
-		}, nil)
-
-	ok, matched, err := ac.Authorize(context.Background(), "2", "alice", "/api/resource", "GET")
+	ac := newTestAuthCase()
+	ok, matched, err := ac.Authorize("2", "alice", "/api/resource", "GET")
 	require.NoError(t, err)
 	require.False(t, ok)
 	require.Empty(t, matched)
 }
 
-func TestAuthorize_MultiplePolicies_StopsOnFirstMatch(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	mockCli := mock.NewMockRpcClientInterface(ctrl)
-	e := newTestEnforcer(t)
-	ac := &AuthCase{
-		cli:      mockCli,
-		keys:     keys.Keys{},
-		enforcer: *e,
-	}
+func TestAuthorize_FirstMatch(t *testing.T) {
+	setTestPolicies([][]*cachedmodel.CachedPolicy{
+		{
+			{
+				ID:       "1",
+				SecretID: "3",
+				Username: "alice",
+				DSL:      `[["alice", "/api/a", "GET"]]`,
+			},
+			{
+				ID:       "2",
+				SecretID: "3",
+				Username: "alice",
+				DSL:      `[["alice", "/api/resource", "GET"]]`,
+			},
+		},
+	})
 
-	mockCli.EXPECT().
-		GetPolicyListBySecretID(gomock.Any(), "3").
-		Return([]*appmodel.Policy{
-			{ID: 1, PolicyShadow: policyShadow(`[["alice", "/api/a", "GET"]]`)},
-			{ID: 2, PolicyShadow: policyShadow(`[["alice", "/api/resource", "GET"]]`)},
-		}, nil)
-
-	ok, matched, err := ac.Authorize(context.Background(), "3", "alice", "/api/resource", "GET")
+	ac := newTestAuthCase()
+	ok, matched, err := ac.Authorize("3", "alice", "/api/resource", "GET")
 	require.NoError(t, err)
 	require.True(t, ok)
-	// Returns the matching policy (second one, since first has /api/a not /api/resource)
 	require.Equal(t, []string{"2"}, matched)
 }
 
-func TestAuthorize_RPCError(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	mockCli := mock.NewMockRpcClientInterface(ctrl)
-	e := newTestEnforcer(t)
-	ac := &AuthCase{
-		cli:      mockCli,
-		keys:     keys.Keys{},
-		enforcer: *e,
-	}
+func TestAuthorize_CacheMiss(t *testing.T) {
+	setTestPolicies(nil)
 
-	mockCli.EXPECT().
-		GetPolicyListBySecretID(gomock.Any(), "4").
-		Return(nil, errors.New("rpc error"))
-
-	ok, matched, err := ac.Authorize(context.Background(), "4", "alice", "/api/resource", "GET")
+	ac := newTestAuthCase()
+	ok, matched, err := ac.Authorize("not-found", "alice", "/api/resource", "GET")
 	require.Error(t, err)
 	require.False(t, ok)
 	require.Nil(t, matched)
 }
 
 func TestAuthorize_InvalidPolicyJSON(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	mockCli := mock.NewMockRpcClientInterface(ctrl)
-	e := newTestEnforcer(t)
-	ac := &AuthCase{
-		cli:      mockCli,
-		keys:     keys.Keys{},
-		enforcer: *e,
-	}
+	setTestPolicies([][]*cachedmodel.CachedPolicy{
+		{
+			{
+				ID:       "5",
+				SecretID: "5",
+				Username: "alice",
+				DSL:      `not-valid-json`,
+			},
+		},
+	})
 
-	mockCli.EXPECT().
-		GetPolicyListBySecretID(gomock.Any(), "5").
-		Return([]*appmodel.Policy{
-			{ID: 5, PolicyShadow: policyShadow(`not-valid-json`)},
-		}, nil)
-
-	ok, matched, err := ac.Authorize(context.Background(), "5", "alice", "/api/resource", "GET")
+	ac := newTestAuthCase()
+	ok, matched, err := ac.Authorize("5", "alice", "/api/resource", "GET")
 	require.Error(t, err)
 	require.False(t, ok)
 	require.Nil(t, matched)
 }
 
 func TestAuthorize_NoPolicies(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	mockCli := mock.NewMockRpcClientInterface(ctrl)
-	e := newTestEnforcer(t)
-	ac := &AuthCase{
-		cli:      mockCli,
-		keys:     keys.Keys{},
-		enforcer: *e,
-	}
+	// 空策略组会被 ReloadPolicies 跳过，缓存中无对应 key
+	setTestPolicies(nil)
 
-	mockCli.EXPECT().
-		GetPolicyListBySecretID(gomock.Any(), "6").
-		Return([]*appmodel.Policy{}, nil)
-
-	ok, matched, err := ac.Authorize(context.Background(), "6", "alice", "/api/resource", "GET")
-	require.NoError(t, err)
+	ac := newTestAuthCase()
+	ok, matched, err := ac.Authorize("6", "alice", "/api/resource", "GET")
+	require.Error(t, err)
 	require.False(t, ok)
-	require.Empty(t, matched)
-}
-
-func TestAuthCaseInterfaceImplementation(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	mockCli := mock.NewMockRpcClientInterface(ctrl)
-	ac := NewAuthCase(mockCli)
-
-	var _ AuthCaseInterface = ac
+	require.Nil(t, matched)
 }

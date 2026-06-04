@@ -17,25 +17,23 @@ func writeTestConfig(t *testing.T, path, content string) {
 	t.Cleanup(func() { os.Remove(path) })
 }
 
-func TestSetDefaults(t *testing.T) {
-	v := viper.New()
-	setDefaults(v)
-	assert.Equal(t, "0.0.0.0", v.GetString("server.host"))
-	assert.Equal(t, 8888, v.GetInt("server.port"))
-	assert.Equal(t, "debug", v.GetString("server.mode"))
-	assert.Equal(t, "info", v.GetString("log.level"))
-	assert.Equal(t, "console", v.GetString("log.format"))
-	assert.Equal(t, "header:Authorization", v.GetString("jwt.token_lookup"))
-	assert.Equal(t, "iam-apiserver", v.GetString("jwt.issuer"))
-	assert.Equal(t, 3306, v.GetInt("mysql.port"))
-	assert.Equal(t, 6379, v.GetInt("redis.port"))
-	assert.Equal(t, 9090, v.GetInt("grpc.port"))
+func TestNewConfig(t *testing.T) {
+	cfg := NewConfig()
+	require.NotNil(t, cfg)
+	require.NotNil(t, cfg.Server)
+	require.NotNil(t, cfg.JWT)
+	require.NotNil(t, cfg.MySQL)
+	require.NotNil(t, cfg.Redis)
+	require.NotNil(t, cfg.Log)
+
+	assert.Equal(t, "0.0.0.0", cfg.Server.Host)
+	assert.Equal(t, 9000, cfg.Server.Port)
+	assert.Equal(t, "debug", cfg.Server.Mode)
+	assert.Equal(t, 3306, cfg.MySQL.Port)
+	assert.Equal(t, 6379, cfg.Redis.Port)
 }
 
 func TestLoadConfigFile_Success(t *testing.T) {
-	v := viper.New()
-	setDefaults(v)
-
 	configDir := t.TempDir()
 	configPath := filepath.Join(configDir, "config.yaml")
 	writeTestConfig(t, configPath, `
@@ -48,37 +46,40 @@ mysql:
   port: 3307
 `)
 
-	err := LoadConfigFile(v, configPath)
+	cfg, err := Load(configPath)
 	require.NoError(t, err)
-	assert.Equal(t, 5555, v.GetInt("server.port"))
-	assert.Equal(t, "test-jwt-secret", v.GetString("jwt.secret_key"))
-	assert.Equal(t, 3307, v.GetInt("mysql.port"))
+	assert.Equal(t, 5555, cfg.Server.Port)
+	assert.Equal(t, "test-jwt-secret", cfg.JWT.SecretKey)
+	assert.Equal(t, 3307, cfg.MySQL.Port)
 }
 
 func TestLoadConfigFile_EmptyPath(t *testing.T) {
-	v := viper.New()
-	// 切换到临时目录以避免误用当前目录下的 config.yaml
 	origDir, _ := os.Getwd()
 	tmpDir := t.TempDir()
 	err := os.Chdir(tmpDir)
 	require.NoError(t, err)
 	t.Cleanup(func() { os.Chdir(origDir) })
 
-	err = LoadConfigFile(v, "")
-	assert.Error(t, err)
+	// Load 吞掉配置文件读取错误，返回默认配置
+	cfg, err := Load("")
+	require.NoError(t, err)
+	assert.Equal(t, 9000, cfg.Server.Port)
 }
 
 func TestLoadConfigFile_FileNotFound(t *testing.T) {
-	v := viper.New()
-	err := LoadConfigFile(v, "/nonexistent/config.yaml")
-	assert.Error(t, err)
+	// Load 吞掉配置文件读取错误，返回默认配置
+	cfg, err := Load("/nonexistent/config.yaml")
+	require.NoError(t, err)
+	assert.Equal(t, 9000, cfg.Server.Port)
 }
 
 func TestLoadEnvVars_Bind(t *testing.T) {
 	v := viper.New()
-	setDefaults(v)
 	LoadEnvVars(v)
-	assert.Equal(t, "debug", v.GetString("server.mode"))
+	// LoadEnvVars 不应 panic
+	// 设置环境变量后 viper 能正确读取
+	t.Setenv("IAM_SERVER_MODE", "release")
+	assert.Equal(t, "release", v.GetString("server.mode"))
 }
 
 func TestLoad_Success(t *testing.T) {
@@ -119,6 +120,8 @@ func TestLoad_NoJWTSecret(t *testing.T) {
 server:
   port: 8080
   mode: "test"
+jwt:
+  secret_key: ""
 mysql:
   password: "pass"
 `)
@@ -137,6 +140,8 @@ server:
   mode: "test"
 jwt:
   secret_key: "secret"
+mysql:
+  password: ""
 `)
 
 	_, err := Load(configPath)
@@ -261,25 +266,14 @@ func TestAutoConfigFilePath_Default(t *testing.T) {
 }
 
 func TestValidateConfig_InvalidRedisPort(t *testing.T) {
-	v := viper.New()
-	setDefaults(v)
-	v.Set("server.port", 8080)
-	v.Set("server.mode", "test")
-	v.Set("jwt.secret_key", "secret")
-	v.Set("mysql.password", "pass")
-	v.Set("mysql.port", 3306)
-	v.Set("redis.port", 99999)
+	cfg := NewConfig()
+	cfg.Redis.Port = 99999
 
-	var cfg AppConfig
-	err := v.Unmarshal(&cfg)
-	require.NoError(t, err)
-
-	err = validateConfig(&cfg)
+	err := validateConfig(cfg)
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "Redis端口无效")
 }
 
-// Test that load with env vars can work for loading missing values
 func TestLoad_LoadConfigFileErrorStillWorks(t *testing.T) {
 	configDir := t.TempDir()
 	configPath := filepath.Join(configDir, "full.yaml")

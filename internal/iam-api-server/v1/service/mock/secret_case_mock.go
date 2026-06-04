@@ -99,6 +99,36 @@ func (mr *MockSecretCaseInterfaceMockRecorder) GenerateSecretKey() *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateSecretKey", reflect.TypeOf((*MockSecretCaseInterface)(nil).GenerateSecretKey))
 }
 
+// GetAllPolicies mocks base method.
+func (m *MockSecretCaseInterface) GetAllPolicies(ctx context.Context) (map[string][]*model.Policy, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllPolicies", ctx)
+	ret0, _ := ret[0].(map[string][]*model.Policy)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllPolicies indicates an expected call of GetAllPolicies.
+func (mr *MockSecretCaseInterfaceMockRecorder) GetAllPolicies(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllPolicies", reflect.TypeOf((*MockSecretCaseInterface)(nil).GetAllPolicies), ctx)
+}
+
+// GetAllSecrets mocks base method.
+func (m *MockSecretCaseInterface) GetAllSecrets(ctx context.Context) ([]*model.Secret, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllSecrets", ctx)
+	ret0, _ := ret[0].([]*model.Secret)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllSecrets indicates an expected call of GetAllSecrets.
+func (mr *MockSecretCaseInterfaceMockRecorder) GetAllSecrets(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllSecrets", reflect.TypeOf((*MockSecretCaseInterface)(nil).GetAllSecrets), ctx)
+}
+
 // GetSecretBindingPolicy mocks base method.
 func (m *MockSecretCaseInterface) GetSecretBindingPolicy(ctx context.Context, id string, query repository.PageQuery) (repository.PageResult[*model.Policy], error) {
 	m.ctrl.T.Helper()

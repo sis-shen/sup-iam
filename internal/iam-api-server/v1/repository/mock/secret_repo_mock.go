@@ -71,6 +71,36 @@ func (mr *MockSecretRepositoryMockRecorder) DeleteByID(ctx, id any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteByID", reflect.TypeOf((*MockSecretRepository)(nil).DeleteByID), ctx, id)
 }
 
+// GetAllPoliciesMap mocks base method.
+func (m *MockSecretRepository) GetAllPoliciesMap(ctx context.Context) (map[string][]*model.Policy, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllPoliciesMap", ctx)
+	ret0, _ := ret[0].(map[string][]*model.Policy)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllPoliciesMap indicates an expected call of GetAllPoliciesMap.
+func (mr *MockSecretRepositoryMockRecorder) GetAllPoliciesMap(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllPoliciesMap", reflect.TypeOf((*MockSecretRepository)(nil).GetAllPoliciesMap), ctx)
+}
+
+// GetAllSecrets mocks base method.
+func (m *MockSecretRepository) GetAllSecrets(ctx context.Context) ([]*model.Secret, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAllSecrets", ctx)
+	ret0, _ := ret[0].([]*model.Secret)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetAllSecrets indicates an expected call of GetAllSecrets.
+func (mr *MockSecretRepositoryMockRecorder) GetAllSecrets(ctx any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllSecrets", reflect.TypeOf((*MockSecretRepository)(nil).GetAllSecrets), ctx)
+}
+
 // GetByAK mocks base method.
 func (m *MockSecretRepository) GetByAK(ctx context.Context, ak string) (*model.Secret, error) {
 	m.ctrl.T.Helper()

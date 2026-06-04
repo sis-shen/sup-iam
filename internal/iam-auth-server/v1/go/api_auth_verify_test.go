@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
+	model "github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/model"
 	servicemock "github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/service/mock"
 	"github.com/sis-shen/sup-iam/internal/pkg/log"
 	"github.com/stretchr/testify/assert"
@@ -57,19 +57,15 @@ func TestVerifyRequest_Success(t *testing.T) {
 		ContentHash: "hash123",
 		Timestamp:   1700000000,
 		Signature:   "valid-sig",
+		Username:    "alice",
 	}
 
 	canonical := "ak-001\nGET\n/api/resource\nhash123\n1700000000"
-	secret := &model.Secret{
-		ID:        100,
-		SecretKey: "sk-001",
-		AccessKey: "ak-001",
-	}
 
 	gomock.InOrder(
 		mockSvc.EXPECT().BuildCanonicalString("ak-001", "GET", "/api/resource", "hash123", "1700000000").Return(canonical),
-		mockSvc.EXPECT().VerifySecretKey(gomock.Any(), "ak-001", canonical, "valid-sig").Return(true, secret, nil),
-		mockSvc.EXPECT().Authorize(gomock.Any(), "100", "ak-001", "/api/resource", "GET").Return(true, []string{"10"}, nil),
+		mockSvc.EXPECT().VerifySecretKey("ak-001", canonical, "valid-sig").Return(true, &model.CachedSecret{ID: "100", SecretKey: "sk-001", AccessKey: "ak-001"}, nil),
+		mockSvc.EXPECT().Authorize("alice", "ak-001", "/api/resource", "GET").Return(true, []string{"10"}, nil),
 	)
 
 	w := httptest.NewRecorder()
@@ -122,7 +118,7 @@ func TestVerifyRequest_VerifySecretError(t *testing.T) {
 	}
 
 	mockSvc.EXPECT().BuildCanonicalString(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("canonical")
-	mockSvc.EXPECT().VerifySecretKey(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(false, nil, assert.AnError)
+	mockSvc.EXPECT().VerifySecretKey(gomock.Any(), gomock.Any(), gomock.Any()).Return(false, nil, assert.AnError)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -150,10 +146,10 @@ func TestVerifyRequest_VerifySecretFails(t *testing.T) {
 		ContentHash: "hash", Timestamp: 1700000000, Signature: "bad-sig",
 	}
 
-	secret := &model.Secret{ID: 100, SecretKey: "sk", AccessKey: "ak-001"}
+	secret := &model.CachedSecret{ID: "100", SecretKey: "sk", AccessKey: "ak-001"}
 
 	mockSvc.EXPECT().BuildCanonicalString(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("canonical")
-	mockSvc.EXPECT().VerifySecretKey(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(false, secret, nil)
+	mockSvc.EXPECT().VerifySecretKey(gomock.Any(), gomock.Any(), gomock.Any()).Return(false, secret, nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -177,10 +173,10 @@ func TestVerifyRequest_AccessKeyMismatch(t *testing.T) {
 		ContentHash: "hash", Timestamp: 1700000000, Signature: "sig",
 	}
 
-	secret := &model.Secret{ID: 100, SecretKey: "sk", AccessKey: "ak-different"}
+	secret := &model.CachedSecret{ID: "100", SecretKey: "sk", AccessKey: "ak-different"}
 
 	mockSvc.EXPECT().BuildCanonicalString(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("canonical")
-	mockSvc.EXPECT().VerifySecretKey(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, secret, nil)
+	mockSvc.EXPECT().VerifySecretKey(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, secret, nil)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -204,12 +200,12 @@ func TestVerifyRequest_AuthorizeError(t *testing.T) {
 		ContentHash: "hash", Timestamp: 1700000000, Signature: "sig",
 	}
 
-	secret := &model.Secret{ID: 100, SecretKey: "sk", AccessKey: "ak-001"}
+	secret := &model.CachedSecret{ID: "100", SecretKey: "sk", AccessKey: "ak-001"}
 
 	gomock.InOrder(
 		mockSvc.EXPECT().BuildCanonicalString(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("canonical"),
-		mockSvc.EXPECT().VerifySecretKey(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, secret, nil),
-		mockSvc.EXPECT().Authorize(gomock.Any(), "100", "ak-001", "/api/resource", "GET").Return(false, nil, assert.AnError),
+		mockSvc.EXPECT().VerifySecretKey(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, secret, nil),
+		mockSvc.EXPECT().Authorize("", "ak-001", "/api/resource", "GET").Return(false, nil, assert.AnError),
 	)
 
 	w := httptest.NewRecorder()
@@ -234,12 +230,12 @@ func TestVerifyRequest_Denied(t *testing.T) {
 		ContentHash: "hash", Timestamp: 1700000000, Signature: "sig",
 	}
 
-	secret := &model.Secret{ID: 100, SecretKey: "sk", AccessKey: "ak-001"}
+	secret := &model.CachedSecret{ID: "100", SecretKey: "sk", AccessKey: "ak-001"}
 
 	gomock.InOrder(
 		mockSvc.EXPECT().BuildCanonicalString(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("canonical"),
-		mockSvc.EXPECT().VerifySecretKey(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(true, secret, nil),
-		mockSvc.EXPECT().Authorize(gomock.Any(), "100", "ak-001", "/api/resource", "GET").Return(false, nil, nil),
+		mockSvc.EXPECT().VerifySecretKey(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, secret, nil),
+		mockSvc.EXPECT().Authorize("", "ak-001", "/api/resource", "GET").Return(false, nil, nil),
 	)
 
 	w := httptest.NewRecorder()

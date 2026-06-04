@@ -10,10 +10,9 @@
 package mock
 
 import (
-	context "context"
 	reflect "reflect"
 
-	model "github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
+	model "github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/model"
 	gomock "go.uber.org/mock/gomock"
 )
 
@@ -42,9 +41,9 @@ func (m *MockAuthCaseInterface) EXPECT() *MockAuthCaseInterfaceMockRecorder {
 }
 
 // Authorize mocks base method.
-func (m *MockAuthCaseInterface) Authorize(ctx context.Context, secretID, accessKey, path, method string) (bool, []string, error) {
+func (m *MockAuthCaseInterface) Authorize(secretID, username, path, method string) (bool, []string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Authorize", ctx, secretID, accessKey, path, method)
+	ret := m.ctrl.Call(m, "Authorize", secretID, username, path, method)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].([]string)
 	ret2, _ := ret[2].(error)
@@ -52,9 +51,9 @@ func (m *MockAuthCaseInterface) Authorize(ctx context.Context, secretID, accessK
 }
 
 // Authorize indicates an expected call of Authorize.
-func (mr *MockAuthCaseInterfaceMockRecorder) Authorize(ctx, secretID, accessKey, path, method any) *gomock.Call {
+func (mr *MockAuthCaseInterfaceMockRecorder) Authorize(secretID, username, path, method any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Authorize", reflect.TypeOf((*MockAuthCaseInterface)(nil).Authorize), ctx, secretID, accessKey, path, method)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Authorize", reflect.TypeOf((*MockAuthCaseInterface)(nil).Authorize), secretID, username, path, method)
 }
 
 // BuildCanonicalString mocks base method.
@@ -72,17 +71,17 @@ func (mr *MockAuthCaseInterfaceMockRecorder) BuildCanonicalString(accessKey, met
 }
 
 // VerifySecretKey mocks base method.
-func (m *MockAuthCaseInterface) VerifySecretKey(ctx context.Context, accessKey, canonicalString, signature string) (bool, *model.Secret, error) {
+func (m *MockAuthCaseInterface) VerifySecretKey(accessKey, canonicalString, signature string) (bool, *model.CachedSecret, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "VerifySecretKey", ctx, accessKey, canonicalString, signature)
+	ret := m.ctrl.Call(m, "VerifySecretKey", accessKey, canonicalString, signature)
 	ret0, _ := ret[0].(bool)
-	ret1, _ := ret[1].(*model.Secret)
+	ret1, _ := ret[1].(*model.CachedSecret)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
 
 // VerifySecretKey indicates an expected call of VerifySecretKey.
-func (mr *MockAuthCaseInterfaceMockRecorder) VerifySecretKey(ctx, accessKey, canonicalString, signature any) *gomock.Call {
+func (mr *MockAuthCaseInterfaceMockRecorder) VerifySecretKey(accessKey, canonicalString, signature any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifySecretKey", reflect.TypeOf((*MockAuthCaseInterface)(nil).VerifySecretKey), ctx, accessKey, canonicalString, signature)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifySecretKey", reflect.TypeOf((*MockAuthCaseInterface)(nil).VerifySecretKey), accessKey, canonicalString, signature)
 }
