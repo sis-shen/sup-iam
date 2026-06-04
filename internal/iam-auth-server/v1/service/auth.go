@@ -42,7 +42,7 @@ func NewAuthCase(ch *cache.Cache, keys keys.KeysInterface, analytics *analytics.
 
 	pool := &sync.Pool{
 		New: func() interface{} {
-			e, err := casbin.NewEnforcer(glbModel, nil)
+			e, err := casbin.NewEnforcer(glbModel)
 			if err != nil {
 				//不应该发生
 				panic(err)
@@ -125,7 +125,7 @@ func (ac *AuthCase) Authorize(secretID string, username string, path string, met
 		if err != nil {
 			record.Timestamp = time.Now()
 			record.Effect = "deny"
-			record.Reason = fmt.Sprintf("internal error : %v")
+			record.Reason = fmt.Sprintf("internal error : %v", err)
 			record.LatencyMs = time.Since(startTime).Milliseconds()
 			_ = ac.analytics.RecordHit(record)
 			return false, nil, err
