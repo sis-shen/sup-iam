@@ -107,6 +107,29 @@ mod-update: ## 更新依赖
 	go get -u ./...
 	go mod tidy
 
+.PHONY: kube-namespace
+kube-namespace: ## 创建 Kubernetes 命名空间
+	@echo "创建 Kubernetes 命名空间..."
+	@kubectl create namespace iam --dry-run=client -o yaml | kubectl apply -f -
+
+.PHONY: kube-clean
+kube-clean: ## 清理 Kubernetes 资源
+	@echo "清理 Kubernetes 资源..."
+	@kubectl -n iam delete all --selector=app=iam --ignore-not-found
+	@kubectl -n iam delete configmap iam --ignore-not-found
+
+.PHONY:kube-list
+kube-list: ## 列出 Kubernetes 资源
+	@echo "列出 Kubernetes 资源..."
+	@kubectl -n iam get all
+	@kubectl -n iam get configmap iam-config
+
+.PHONY: kube-cm
+kube-cm: ## 生成 ConfigMap 文件
+	@echo "生成 ConfigMap 文件..."
+	@mkdir -p deploy/configmaps
+	@kubectl -n iam create configmap iam-config --from-file=config/
+
 # ========== 开发便利 ==========
 .PHONY: dev-api
 dev-api: ## 开发模式运行 API Server
