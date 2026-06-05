@@ -10,6 +10,10 @@ server:
   # 运行模式: debug/release/test
   # debug模式会输出详细日志，release模式会优化性能
   mode: "debug"
+  # 健康检查路径
+  health_path: "/healthz"
+  # 健康检查地址
+  health_addr: "0.0.0.0:7070"
   # 读取超时
   read_timeout: 30s
   # 写入超时
