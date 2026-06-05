@@ -1,0 +1,33 @@
+mysql:
+  clusterType: async
+  size: 1
+  expose:
+    enabled: false
+
+  volumeSpec:
+    pvc:
+      storageClassName: local-path-retain
+      resources:
+        requests:
+          storage: 20Gi
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: "1"
+      memory: 2Gi
+
+backup:
+  enabled: false
+
+pmm:
+  enabled: false
+
+unsafeFlags:
+  proxy: true
+
+proxy:
+  haproxy:
+    enabled: false
