@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: {{ .Values.iamPump.name }}
+  name: {{ .Values.iamPump.name }}
+spec:
+  ports:
+  - name: http-health
+    protocol: TCP
+    {{- toYaml .Values.iamPump.service.http| nindent 4 }}
+  selector:
+    app: {{ .Values.iamPump.name }}
+  sessionAffinity: None
+  type: {{ .Values.serviceType }}

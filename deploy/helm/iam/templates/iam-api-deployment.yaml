@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.apiServer.name }}
+  name: {{ .Values.apiServer.name }}
+spec:
+  {{- if not .Values.autoscaling.enabled }} # 防止与HPA自动扩容冲突
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  progressDeadlineSeconds: 600
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      app: {{ .Values.apiServer.name }}
+  strategy:
+    type: RollingUpdate
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        app: {{ .Values.apiServer.name }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - {{ .Values.apiServer.name }}
+              topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: {{ .Values.apiServer.name }}
+        command:
+        - /app/iam-api-server
+        envFrom:
+        - secretRef:
+            name: {{ .Values.apiServer.secretName }}
+        image: "{{ .Values.apiServer.image.repository }}:{{ .Values.apiServer.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.apiServer.image.pullPolicy }}
+        {{- with .Values.apiServer.containerPorts }}
+        ports:
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: {{ .Values.apiServer.healthz.port }}
+            scheme: HTTP
+          {{- toYaml .Values.apiServer.livenessProbe | nindent 10 }}
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: {{ .Values.apiServer.healthz.port }}
+            scheme: HTTP
+          {{- toYaml .Values.apiServer.readinessProbe | nindent 10 }}
+        startupProbe:
+          httpGet:
+            path: /healthz
+            port: {{ .Values.apiServer.healthz.port }}
+            scheme: HTTP
+          {{- toYaml .Values.apiServer.startupProbe | nindent 10 }}
+        resources:
+          {{- toYaml .Values.apiServer.resources | nindent 12 }}
+        volumeMounts:
+        - mountPath: /app/config
+          name: config-volume
+          readOnly: true
+          subPath: {{ .Values.apiServer.configFileName }}.yaml
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          items:
+          - key: {{ .Values.apiServer.configFileName }}.yaml
+            path: {{ .Values.apiServer.configFileName }}.yaml
+          name: {{ .Values.apiServer.configMapName }}
+        name: config-volume
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
