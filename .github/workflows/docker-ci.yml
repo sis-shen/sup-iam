@@ -38,30 +38,26 @@ jobs:
           name: test-coverage
           path: coverage.out
 
-      # 2. 直接调用 Makefile 进行构建和测试
-      - name: Build with Makefile
+      #  直接调用 Makefile 进行构建和测试
+      - name: Build Docker image with Makefile
         run: |
-          make docker-build VERSION=${{ github.sha }}
+          make docker-build
     
-      # 3. 测试镜像运行
+      #  测试镜像运行
       - name: Test Docker image
         run: |
-          make docker-checkversion VERSION=${{ github.sha }}
+          make docker-checkversion
 
 
-    #   # 3. （可选）登录到 Github
-    #   - name: Log in to GHCR
-    #     uses: docker/login-action@v3
-    #     with:
-    #       registry: ghcr.io
-    #       username: ${{ github.actor }}
-    #       password: ${{ secrets.GITHUB_TOKEN }}  # 自动提供，无需配置
+      #  登录到 Github
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}  # 自动提供，无需配置
 
-      # 4. （可选）构建并推送最终镜像
-      #    如果 make build 只是生成本地镜像，这一步可以帮你打标签并推送
-    #   - name: Build and push Docker image
-    #     uses: docker/build-push-action@v6
-    #     with:
-    #       context: .
-    #       push: true
-    #       tags: ${{ secrets.DOCKER_USERNAME }}/your-app-name:latest
+      #  推送最终镜像
+      - name: Build and push Docker image
+        run: |
+          make docker-push
