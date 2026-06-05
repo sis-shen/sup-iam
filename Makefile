@@ -107,6 +107,7 @@ mod-update: ## 更新依赖
 	go get -u ./...
 	go mod tidy
 
+# ==== K8S相关
 .PHONY: kube-namespace
 kube-namespace: ## 创建 Kubernetes 命名空间
 	@echo "创建 Kubernetes 命名空间..."
@@ -122,13 +123,34 @@ kube-clean: ## 清理 Kubernetes 资源
 kube-list: ## 列出 Kubernetes 资源
 	@echo "列出 Kubernetes 资源..."
 	@kubectl -n iam get all
-	@kubectl -n iam get configmap iam-config
+	@kubectl -n iam get configmap|| true
+	@kubectl get all -n iam -l app.kubernetes.io/instance=mysql-dev || true
 
 .PHONY: kube-cm
 kube-cm: ## 生成 ConfigMap 文件
 	@echo "生成 ConfigMap 文件..."
 	@mkdir -p deploy/configmaps
-	@kubectl -n iam create configmap iam-config --from-file=config/
+	@kubectl -n iam create configmap iam-config --from-file=config/config_map/
+
+.PHONY: helm-mysql-cm
+helm-mysql-cm: ## 生成 MySQL ConfigMap 文件
+	@echo "生成 MySQL ConfigMap 文件..."
+	@kubectl -n iam create configmap mysql-dev-config --from-file=deploy/sql/init.sql
+
+.PHONY: helm-percona-install
+helm-percona-install: ## 安装 Percona Helm Chart
+	@echo "安装 Percona Helm Chart..."
+	@helm install percona-dev percona/ps-db --values deploy/helm/percona/values.yaml -n iam
+
+.PHONY: helm-percona-upgrade
+helm-percona-upgrade: ## 升级 MySQL Helm Chart
+	@echo "升级 MySQL Helm Chart..."
+	@helm upgrade percona-dev percona/ps-db --values deploy/helm/percona/values.yaml -n iam
+
+.PHONY: helm-percona-uninstall
+helm-percona-uninstall: ## 卸载 Percona Helm Chart
+	@echo "卸载 Percona Helm Chart..."
+	@helm uninstall percona-dev -n iam
 
 # ========== 开发便利 ==========
 .PHONY: dev-api
