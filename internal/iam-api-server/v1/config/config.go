@@ -19,6 +19,8 @@ type AppConfig struct {
 type ServerConfig struct {
 	Host              string        `mapstructure:"host"`
 	Port              int           `mapstructure:"port"`
+	HealthPath        string        `mapstructure:"health_path"`
+	HealthAddr        string        `mapstructure:"health_addr"`
 	Mode              string        `mapstructure:"mode"` // debug/release/test
 	ReadTimeout       time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout      time.Duration `mapstructure:"write_timeout"`
@@ -49,6 +51,7 @@ type MySQLConfig struct {
 	MaxIdleConns    int           `mapstructure:"max_idle_conns"`
 	MaxOpenConns    int           `mapstructure:"max_open_conns"`
 	ConnMaxLifetime time.Duration `mapstructure:"conn_max_lifetime"`
+	ConnMaxIdleTime time.Duration `mapstructure:"conn_max_idle_time"`
 	MaxRetries      int           `mapstructure:"max_retries"`
 }
 

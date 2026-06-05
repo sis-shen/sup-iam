@@ -79,25 +79,10 @@ func LoadEnvVars(v *viper.Viper, prefix string) (err error) {
 		// Redis
 		prefix + "host":                     "IAM_REDIS_HOST",
 		prefix + "port":                     "IAM_REDIS_PORT",
-		prefix + "addrs":                    "IAM_REDIS_ADDRS",
 		prefix + "username":                 "IAM_REDIS_USERNAME",
 		prefix + "password":                 "IAM_REDIS_PASSWORD",
-		prefix + "db":                       "IAM_REDIS_DB",
-		prefix + "health_check_interval":    "IAM_REDIS_HEALTH_CHECK_INTERVAL",
-		prefix + "enable_cluster":           "IAM_REDIS_ENABLE_CLUSTER",
-		prefix + "master_name":              "IAM_REDIS_MASTER_NAME",
 		prefix + "use_ssl":                  "IAM_REDIS_USE_SSL",
 		prefix + "ssl_insecure_skip_verify": "IAM_REDIS_SSL_INSECURE",
-		prefix + "pool_size":                "IAM_REDIS_POOL_SIZE",
-		prefix + "max_active_conns":         "IAM_REDIS_MAX_ACTIVE_CONNS",
-		prefix + "min_idle_conns":           "IAM_REDIS_MIN_IDLE_CONNS",
-		prefix + "max_idle_conns":           "IAM_REDIS_MAX_IDLE_CONNS",
-		prefix + "conn_max_idle_time":       "IAM_REDIS_CONN_MAX_IDLE_TIME",
-		prefix + "conn_max_lifetime":        "IAM_REDIS_CONN_MAX_LIFETIME",
-		prefix + "dial_timeout":             "IAM_REDIS_DIAL_TIMEOUT",
-		prefix + "read_timeout":             "IAM_REDIS_READ_TIMEOUT",
-		prefix + "write_timeout":            "IAM_REDIS_WRITE_TIMEOUT",
-		prefix + "pool_timeout":             "IAM_REDIS_POOL_TIMEOUT",
 	}
 
 	for key, env := range envMappings {

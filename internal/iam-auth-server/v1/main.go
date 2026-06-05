@@ -12,6 +12,7 @@ import (
 	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/service"
 	storeredis "github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/storage/redis"
 	"github.com/sis-shen/sup-iam/internal/pkg/keys"
+	genericapiserver "github.com/sis-shen/sup-iam/internal/pkg/server"
 
 	"github.com/sis-shen/sup-iam/internal/pkg/log"
 	"github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v2"
@@ -137,6 +138,7 @@ func main() {
 	router := server.NewRouter(routes)
 
 	//======== 5.启动HTTPServer
+	go genericapiserver.ServeHealthCheck(conf.Server.HealthPath, conf.Server.HealthAddr)
 	address := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
 	httpServer := &http.Server{
 		Addr:         address,

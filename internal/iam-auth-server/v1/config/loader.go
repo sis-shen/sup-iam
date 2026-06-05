@@ -66,49 +66,23 @@ func LoadEnvVars(v *viper.Viper) {
 	// 敏感信息必须通过环境变量设置
 	envMappings := map[string]string{
 		// 服务器
-		"server.host":              "IAM_SERVER_HOST",
-		"server.port":              "IAM_SERVER_PORT",
-		"server.mode":              "IAM_SERVER_MODE",
-		"server.read_timeout":      "IAM_SERVER_READ_TIMEOUT",
-		"server.write_timeout":     "IAM_SERVER_WRITE_TIMEOUT",
-		"server.idle_timeout":      "IAM_SERVER_IDLE_TIMEOUT",
-		"server.grace_timeout":     "IAM_SERVER_GRACE_TIMEOUT",
-		"server.enable_redis_sink": "IAM_SERVER_ENABLE_REDIS_SINK",
-		"server.redis_key_prefix":  "IAM_SERVER_REDIS_KEY_PREFIX",
-		"server.sink_level":        "IAM_SERVER_SINK_LEVEL",
+		"server.host": "IAM_SERVER_HOST",
+		"server.port": "IAM_SERVER_PORT",
+		"server.mode": "IAM_SERVER_MODE",
 
 		// gRPC
-		"grpc.host":                  "IAM_GRPC_HOST",
-		"grpc.port":                  "IAM_GRPC_PORT",
-		"grpc.etcd_server_discovery": "IAM_GRPC_ETCD_SERVER_DISCOVERY",
-		"grpc.service_name":          "IAM_GRPC_SERVICE_NAME",
+		"grpc.host": "IAM_GRPC_HOST",
+		"grpc.port": "IAM_GRPC_PORT",
 
 		// Redis
-		"redis.host":                  "IAM_REDIS_HOST",
-		"redis.port":                  "IAM_REDIS_PORT",
-		"redis.password":              "IAM_REDIS_PASSWORD",
-		"redis.database_name":         "IAM_REDIS_DATABASE_NAME",
-		"redis.health_check_interval": "IAM_REDIS_HEALTH_CHECK_INTERVAL",
-		"redis.pool_size":             "IAM_REDIS_POOL_SIZE",
-		"redis.min_idle_conns":        "IAM_REDIS_MIN_IDLE_CONNS",
-		"redis.max_idle_conns":        "IAM_REDIS_MAX_IDLE_CONNS",
-		"redis.conn_max_idle_time":    "IAM_REDIS_CONN_MAX_IDLE_TIME",
-		"redis.conn_max_lifetime":     "IAM_REDIS_CONN_MAX_LIFETIME",
-		"redis.dial_timeout":          "IAM_REDIS_DIAL_TIMEOUT",
-		"redis.read_timeout":          "IAM_REDIS_READ_TIMEOUT",
-		"redis.write_timeout":         "IAM_REDIS_WRITE_TIMEOUT",
-		"redis.pool_timeout":          "IAM_REDIS_POOL_TIMEOUT",
+		"redis.host":          "IAM_REDIS_HOST",
+		"redis.port":          "IAM_REDIS_PORT",
+		"redis.password":      "IAM_REDIS_PASSWORD",
+		"redis.database_name": "IAM_REDIS_DATABASE_NAME",
 
 		// 日志
-		"log.level":              "IAM_LOG_LEVEL",
-		"log.format":             "IAM_LOG_FORMAT",
-		"log.output-paths":       "IAM_LOG_OUTPUT_PATHS",
-		"log.error-output-paths": "IAM_LOG_ERROR_OUTPUT_PATHS",
-		"log.disable-caller":     "IAM_LOG_DISABLE_CALLER",
-		"log.disable-stacktrace": "IAM_LOG_DISABLE_STACKTRACE",
-		"log.enable-color":       "IAM_LOG_ENABLE_COLOR",
-		"log.development":        "IAM_LOG_DEVELOPMENT",
-		"log.name":               "IAM_LOG_NAME",
+		"log.level": "IAM_LOG_LEVEL",
+		"log.name":  "IAM_LOG_NAME",
 	}
 
 	for key, env := range envMappings {

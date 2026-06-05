@@ -33,6 +33,7 @@ func Load(configPath string) (*AppConfig, error) {
 
 	// 显式绑定重要环境变量
 	LoadEnvVars(v)
+	_ = genericoptions.LoadEnvVars(v, "redis")
 
 	if err := v.Unmarshal(cfg); err != nil {
 		return nil, fmt.Errorf("解析配置失败: %w", err)
@@ -70,58 +71,27 @@ func LoadEnvVars(v *viper.Viper) {
 	// 敏感信息必须通过环境变量设置
 	envMappings := map[string]string{
 		// 服务器
-		"server.host":              "IAM_SERVER_HOST",
-		"server.port":              "IAM_SERVER_PORT",
-		"server.mode":              "IAM_SERVER_MODE",
-		"server.read_timeout":      "IAM_SERVER_READ_TIMEOUT",
-		"server.write_timeout":     "IAM_SERVER_WRITE_TIMEOUT",
-		"server.black_list_ttl":    "IAM_SERVER_BLACK_LIST_TTL",
-		"server.idle_timeout":      "IAM_SERVER_IDLE_TIMEOUT",
-		"server.grace_timeout":     "IAM_SERVER_GRACE_TIMEOUT",
-		"server.enable_redis_sink": "IAM_SERVER_ENABLE_REDIS_SINK",
-		"server.redis_key_prefix":  "IAM_SERVER_REDIS_KEY_PREFIX",
-		"server.sink_level":        "IAM_SERVER_SINK_LEVEL",
+		"server.host": "IAM_SERVER_HOST",
+		"server.port": "IAM_SERVER_PORT",
+		"server.mode": "IAM_SERVER_MODE",
 
 		// JWT
-		"jwt.secret_key":                "IAM_JWT_SECRET_KEY",
-		"jwt.access_token_expire_time":  "IAM_ACCESS_TOKEN_EXPIRE_TIME",
-		"jwt.refresh_token_expire_time": "IAM_REFRESH_TOKEN_EXPIRE_TIME",
-		"jwt.user_id_key":               "IAM_JWT_USER_ID_KEY",
-		"jwt.token_lookup":              "IAM_JWT_TOKEN_LOOKUP",
-		"jwt.issuer":                    "IAM_JWT_ISSUER",
-		"jwt.skip_paths":                "IAM_JWT_SKIP_PATHS",
+		"jwt.secret_key":  "IAM_JWT_SECRET_KEY",
+		"jwt.user_id_key": "IAM_JWT_USER_ID_KEY",
 
 		// MySQL
-		"mysql.host":              "IAM_MYSQL_HOST",
-		"mysql.port":              "IAM_MYSQL_PORT",
-		"mysql.username":          "IAM_MYSQL_USERNAME",
-		"mysql.password":          "IAM_MYSQL_PASSWORD",
-		"mysql.database_name":     "IAM_MYSQL_DATABASE_NAME",
-		"mysql.max_idle_conns":    "IAM_MYSQL_MAX_IDLE_CONNS",
-		"mysql.max_open_conns":    "IAM_MYSQL_MAX_OPEN_CONNS",
-		"mysql.conn_max_lifetime": "IAM_MYSQL_CONN_MAX_LIFETIME",
-		"mysql.max_retries":       "IAM_MYSQL_MAX_RETRIES",
+		"mysql.host":     "IAM_MYSQL_HOST",
+		"mysql.port":     "IAM_MYSQL_PORT",
+		"mysql.username": "IAM_MYSQL_USERNAME",
+		"mysql.password": "IAM_MYSQL_PASSWORD",
 
 		// gRPC
-		"grpc.host":                  "IAM_GRPC_HOST",
-		"grpc.port":                  "IAM_GRPC_PORT",
-		"grpc.etcd_server_discovery": "IAM_GRPC_ETCD_SERVER_DISCOVERY",
-		"grpc.etcd_host":             "IAM_GRPC_ETCD_HOST",
-		"grpc.etcd_port":             "IAM_GRPC_ETCD_PORT",
-		"grpc.service_name":          "IAM_GRPC_SERVICE_NAME",
-		"grpc.lease_ttl":             "IAM_GRPC_LEASE_TTL",
-		"grpc.service_address":       "IAM_GRPC_SERVICE_ADDRESS",
+		"grpc.host": "IAM_GRPC_HOST",
+		"grpc.port": "IAM_GRPC_PORT",
 
 		// 日志
-		"log.level":              "IAM_LOG_LEVEL",
-		"log.format":             "IAM_LOG_FORMAT",
-		"log.output-paths":       "IAM_LOG_OUTPUT_PATHS",
-		"log.error-output-paths": "IAM_LOG_ERROR_OUTPUT_PATHS",
-		"log.disable-caller":     "IAM_LOG_DISABLE_CALLER",
-		"log.disable-stacktrace": "IAM_LOG_DISABLE_STACKTRACE",
-		"log.enable-color":       "IAM_LOG_ENABLE_COLOR",
-		"log.development":        "IAM_LOG_DEVELOPMENT",
-		"log.name":               "IAM_LOG_NAME",
+		"log.level": "IAM_LOG_LEVEL",
+		"log.name":  "IAM_LOG_NAME",
 	}
 
 	for key, env := range envMappings {

@@ -20,6 +20,8 @@ type Config struct {
 type ServerConfig struct {
 	Host              string        `mapstructure:"host"`
 	Port              int           `mapstructure:"port"`
+	HealthPath        string        `mapstructure:"health_path"`
+	HealthAddr        string        `mapstructure:"health_addr"`
 	Mode              string        `mapstructure:"mode"` // debug/release/test
 	ReadTimeout       time.Duration `mapstructure:"read_timeout"`
 	WriteTimeout      time.Duration `mapstructure:"write_timeout"`

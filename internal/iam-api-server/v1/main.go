@@ -23,6 +23,7 @@ import (
 	"github.com/sis-shen/sup-iam/internal/pkg/log"
 	"github.com/sis-shen/sup-iam/internal/pkg/middleware"
 	"github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v2"
+	genericapiserver "github.com/sis-shen/sup-iam/internal/pkg/server"
 	"github.com/spf13/pflag"
 	etcdclient "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
@@ -117,6 +118,7 @@ func main() {
 	router.Use(jwtMiddleWare)
 
 	//======== 5.启动HTTPServer
+	go genericapiserver.ServeHealthCheck(conf.Server.HealthPath, conf.Server.HealthAddr)
 	address := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
 	httpServer := &http.Server{
 		Addr:         address,
@@ -405,6 +407,7 @@ func initMySQL(conf config.MySQLConfig, _ log.Logger) (*gorm.DB, error) {
 	sqlDB.SetMaxIdleConns(conf.MaxIdleConns)       // 最大空闲连接数
 	sqlDB.SetMaxOpenConns(conf.MaxOpenConns)       // 最大打开连接数
 	sqlDB.SetConnMaxLifetime(conf.ConnMaxLifetime) // 连接最大生命周期
+	sqlDB.SetConnMaxIdleTime(conf.ConnMaxIdleTime)
 
 	// 测试连接
 	if err := sqlDB.Ping(); err != nil {
