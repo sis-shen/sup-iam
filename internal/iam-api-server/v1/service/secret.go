@@ -28,13 +28,13 @@ type SecretCaseInterface interface {
 
 type SecretCase struct {
 	repo repository.SecretRepository
-	keys keys.Keys
+	keys keys.KeysInterface
 }
 
 var _ SecretCaseInterface = (*SecretCase)(nil)
 
 func NewSecretCase(repo repository.SecretRepository) *SecretCase {
-	return &SecretCase{repo: repo}
+	return &SecretCase{repo: repo, keys: keys.NewKeys(0, 0)}
 }
 
 func (sc *SecretCase) GetSecretList(ctx context.Context, id string, query repository.PageQuery) (repository.PageResult[*model.Secret], error) {

@@ -14,9 +14,10 @@ func TestNewKeys_DefaultValues(t *testing.T) {
 }
 
 func TestNewKeys_CustomValues(t *testing.T) {
+	// 低于最小值时会被提升到最小值
 	k := NewKeys(16, 64)
-	require.Equal(t, 16, k.AccessKeyLength)
-	require.Equal(t, 64, k.SecretKeyLength)
+	require.Equal(t, 32, k.AccessKeyLength)
+	require.Equal(t, 128, k.SecretKeyLength)
 }
 
 func TestGenerateAccessKey_Length(t *testing.T) {
@@ -75,10 +76,10 @@ func TestGenerateSecretKey_Length(t *testing.T) {
 }
 
 func TestGenerateSecretKey_LargerLength(t *testing.T) {
-	k := NewKeys(32, 64)
+	k := NewKeys(32, 256)
 	sk := k.GenerateSecretKey()
-	// SecretKeyLength=64 => 16 + 2*(64-20) + 4 = 108
-	require.Equal(t, 108, len(sk))
+	// SecretKeyLength=256 => 16 + 2*(256-20) + 4 = 492
+	require.Equal(t, 492, len(sk))
 }
 
 func TestGenerateSecretKey_Unique(t *testing.T) {
