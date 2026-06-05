@@ -8,7 +8,7 @@ import (
 import genericapiserver "github.com/sis-shen/sup-iam/internal/pkg/server"
 
 func Run(o *options.Options, stopChan <-chan struct{}) error {
-	genericapiserver.ServeHealthCheck(o.HealthCheckPath, o.HealthCheckAddress)
+	go genericapiserver.ServeHealthCheck(o.HealthCheckPath, o.HealthCheckAddress)
 
 	server, err := createPumpServer(o)
 	if err != nil {

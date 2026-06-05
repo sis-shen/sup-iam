@@ -49,6 +49,7 @@ func NewAnalytics(options *AnalyticsOptions, store storage.AnalyticsStore) *Anal
 		recordChan:          make(chan *AnalyticsRecord, options.RecordBufferSize),
 		workerBuffSize:      uint64(workerBufferSize),
 		bufferFlushInterval: options.FlushInterval,
+		analyticsKeyName:    options.AnalyticsKeyName,
 	}
 }
 
