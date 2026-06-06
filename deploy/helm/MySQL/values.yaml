@@ -1,0 +1,57 @@
+# values.yaml
+
+global:
+  security:
+    allowInsecureImages: true
+  defaultStorageClass: local-path-retain
+# 设置架构为复制模式，其中 primary 是主库，secondary 是从库（可读）
+architecture: replication
+
+image:
+  registry: docker.xuanyuan.run
+  repository: bitnamilegacy/mysql
+  tag: "9.4.0"                             # 使用 MySQL 8.0 镜像
+
+# 认证配置
+auth:
+  rootPassword: "IAMrootpassword123"  # 设置 root 密码
+  replicationUser: replicator
+  replicationPassword: "IAMreplicationPassword123"
+  # database: "myapp"                          # 自动创建一个新数据库
+  # username: "myapp-user"                     # 为此数据库创建一个专用用户
+  # password: "myapp-user-password"            # 设置专用用户密码
+
+initdbScriptsConfigMap: mysql-init-scripts
+
+# 主库配置
+primary:
+  # 持久化存储配置
+  persistence:
+    enabled: true
+    size: 10Gi                               # 根据数据量申请存储空间
+    storageClass: "local-path-retain"     # 如果不配置，则使用集群的默认 StorageClass
+  # 资源限制 (强烈建议设置)
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "500m"
+      memory: "1Gi" 
+
+# 从库配置
+secondary:
+  replicaCount: 1                            # 设置1个只读从库副本
+    # 持久化存储配置
+  persistence:
+    enabled: true
+    size: 10Gi                               # 根据数据量申请存储空间
+    storageClass: "local-path-retain"     # 如果不配置，则使用集群的默认 StorageClass
+  # 资源限制
+  resources:
+    requests:
+      cpu: "250m"
+      memory: "512Mi"
+    limits:
+      cpu: "250m"
+      memory: "512Mi"
