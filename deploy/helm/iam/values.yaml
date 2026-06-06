@@ -84,7 +84,7 @@ affinity: {}
 
 apiServer:
   name: iam-api-server
-  secretName: iam-api-server-secret
+  secretName: iam-api-secret
   image:
     repository: ghcr.io/sis-shen/iam-api-server
     tag: "latest"
