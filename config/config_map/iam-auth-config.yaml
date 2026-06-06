@@ -32,7 +32,7 @@ server:
 # ========== gRPC配置 ==========
 grpc:
   # gRPC服务端地址（IAM API Server 的 gRPC 地址）
-  host: "rpc-dev"
+  host: "iam-api-server"
   # gRPC服务端端口（可通过环境变量 IAM_GRPC_PORT 覆盖）
   port: 9090
   # 是否启用 etcd 服务发现（可通过环境变量 IAM_GRPC_ETCD_SERVER_DISCOVERY 覆盖）
@@ -42,7 +42,7 @@ grpc:
 
 # ========== Redis配置 ==========
 redis:
-  host: "redis-dev"
+  host: "redis-cluster"
   port: 6379
   addrs: []                       # 集群地址列表（优先于 host+port）
   username: "iam"

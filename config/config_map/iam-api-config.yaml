@@ -54,7 +54,7 @@ jwt:
 # ========== MySQL配置 ==========
 mysql:
   # 数据库主机地址（可通过环境变量 IAM_MYSQL_HOST 覆盖）
-  host: "mysql-dev"
+  host: "mysql-dev-primary"
   # 数据库端口
   port: 3306
   # 数据库用户名（可通过环境变量 IAM_MYSQL_USERNAME 覆盖）
@@ -76,7 +76,7 @@ mysql:
 
 # ========== Redis配置 ==========
 redis:
-  host: "redis-dev"
+  host: "redis-cluster"
   port: 6379
   addrs: []                       # 集群地址列表（优先于 host+port）
   username: "iam"

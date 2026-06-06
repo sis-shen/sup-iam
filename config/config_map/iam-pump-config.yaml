@@ -13,7 +13,7 @@ pumps:
     timeout: 1s                   # 单次 pump 操作超时
     omit_detail_recoding: true    # 是否省略详细记录
     meta:
-      url: "mongo-dev:27017"
+      url: "mongodb://root:IAMmongopassword123@mongodb-dev-0.mongodb-dev-headless.iam.svc.cluster.local:27017,mongodb-dev-1.mongodb-dev-headless.iam.svc.cluster.local:27017/?replicaSet=rs0"
       use_ssl: false
       ssl_skip_verify: true
       ssl_allow_invalid_hosts: true
@@ -39,7 +39,7 @@ omit_detail_recoding: true        # 全局是否省略详细记录
 # Redis 配置
 # ============================================================
 redis_options:
-  host: "redis-dev"
+  host: "redis-cluster"
   port: 6379
   addrs: []                       # 集群地址列表（优先于 host+port）
   username: "iam"
