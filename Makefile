@@ -123,24 +123,59 @@ kube-clean: ## 清理 Kubernetes 资源
 kube-list: ## 列出 Kubernetes 资源
 	@echo "列出 Kubernetes 资源..."
 	@kubectl -n iam get all
-	@kubectl -n iam get configmap|| true
-	@kubectl get all -n iam -l app.kubernetes.io/instance=mysql-dev || true
+# 	@kubectl -n iam get configmap|| true
+# 	@kubectl get all -n iam -l app.kubernetes.io/instance=mysql-dev || true
 
-.PHONY: kube-cm
-kube-cm: ## 生成 ConfigMap 文件
+.PHONY: kube-cm-create
+kube-cm-create: ## 生成 ConfigMap 文件
 	@echo "生成 ConfigMap 文件..."
 	@mkdir -p deploy/configmaps
 	@kubectl -n iam create configmap iam-config --from-file=config/config_map/
 
+.PHONY: kube-cm-update
+kube-cm-update: ## 更新 ConfigMap 文件
+	@echo "更新 ConfigMap 文件..."
+	@kubectl -n iam delete configmap iam-config --ignore-not-found
+	@kubectl -n iam create configmap iam-config --from-file=config/config_map/
+
+.PHONY: kube-secret-create
+kube-secret-create: ## 生成 Secret 文件
+	@echo "生成 Secret 文件..."
+	@kubectl -n iam create secret generic iam-api-secret --from-file=config/secret/iam-api-env.yaml
+
+# ======== k8s iam ========
+.PHONY: helm-iam-lint
+helm-iam-lint: ## 检查 IAM Helm Chart 语法
+	@echo "检查 IAM Helm Chart 语法..."
+	@helm template test-release ./deploy/helm/iam | kubectl apply --dry-run=server -f -
+
+.PHONY: helm-iam-install
+helm-iam-install: ## 安装 IAM Helm Chart
+	@echo "安装 IAM Helm Chart..."
+	@helm install iam-dev ./deploy/helm/iam -n iam
+
+.PHONY: helm-iam-upgrade
+
+# ======== k8s mysql ========
 .PHONY: helm-mysql-cm
 helm-mysql-cm: ## 生成 MySQL ConfigMap 文件
 	@echo "生成 MySQL ConfigMap 文件..."
-	@kubectl -n iam create configmap mysql-dev-config --from-file=deploy/sql/init.sql
+	@kubectl -n iam create configmap mysql-init-scripts --from-file=deploy/sql/init.sql
 
 .PHONY: helm-percona-install
 helm-percona-install: ## 安装 Percona Helm Chart
 	@echo "安装 Percona Helm Chart..."
 	@helm install percona-dev percona/ps-db --values deploy/helm/percona/values.yaml -n iam
+
+.PHONY: helm-mysql-install
+helm-mysql-install: ## 安装 MySQL Helm Chart
+	@echo "安装 MySQL Helm Chart..."
+	@helm install mysql-dev bitnami/mysql --values deploy/helm/MySQL/values.yaml -n iam
+
+.PHONY: helm-mysql-upgrade
+helm-mysql-upgrade: ## 升级 MySQL Helm Chart
+	@echo "升级 MySQL Helm Chart..."
+	@helm upgrade mysql-dev bitnami/mysql --values deploy/helm/MySQL/values.yaml -n iam
 
 .PHONY: helm-percona-upgrade
 helm-percona-upgrade: ## 升级 MySQL Helm Chart
@@ -152,6 +187,27 @@ helm-percona-uninstall: ## 卸载 Percona Helm Chart
 	@echo "卸载 Percona Helm Chart..."
 	@helm uninstall percona-dev -n iam
 
+
+# ======== k8s redis ========
+.PHONY: helm-redis-install
+helm-redis-install: ## 安装 Redis Helm Chart
+	@echo "安装 Redis Helm Chart..."
+	helm install redis-cluster bitnami/redis-cluster --values deploy/helm/redis/values.yaml -n iam --set password=IAMredispassword123
+
+.PHONY: helm-redis-upgrade
+helm-redis-upgrade: ## 升级 Redis Helm Chart
+	@echo "升级 Redis Helm Chart..."
+	helm upgrade redis-cluster bitnami/redis-cluster --values deploy/helm/redis/values.yaml -n iam --set password=IAMredispassword123
+
+.PHONY: helm-mongodb-install
+helm-mongodb-install: ## 安装 MongoDB Helm Chart
+	@echo "安装 MongoDB Helm Chart..."
+	helm install mongodb-dev bitnami/mongodb --values deploy/helm/mongodb/values.yaml -n iam
+
+.PHONY: helm-mongodb-upgrade
+helm-mongodb-upgrade: ## 升级 MongoDB Helm Chart
+	@echo "升级 MongoDB Helm Chart..."
+	helm upgrade mongodb-dev bitnami/mongodb --values deploy/helm/mongodb/values.yaml -n iam
 # ========== 开发便利 ==========
 .PHONY: dev-api
 dev-api: ## 开发模式运行 API Server
