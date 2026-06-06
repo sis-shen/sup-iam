@@ -1,0 +1,63 @@
+global:
+  security:
+    allowInsecureImages: true
+  defaultStorageClass: local-path-retain
+
+# 集群规模
+cluster:
+  nodes: 6
+  replicas: 1
+
+image:
+  registry: docker.xuanyuan.run
+  repository: bitnamilegacy/redis-cluster
+  tag: "8.2.1"
+
+# 认证
+auth:
+  enabled: true
+password: "IAMredispassword123"
+
+# 资源限制（4C8G机器关键）
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+redis:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+updateJob:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+# 持久化（开发环境可以小一点）
+persistence:
+  enabled: true
+  size: 2Gi
+  storageClass: "local-path-retain"
+
+# 禁止过度 Sentinel/复杂模式（Cluster 已够）
+sentinel:
+  enabled: false
+
+config:
+  # 这里可以添加 Redis 配置项，例如：
+  maxmemory: "256mb"
+  maxmemory-policy: "allkeys-lru"
+
+  appendonly: "yes"
+  appendfsync: "everysec"

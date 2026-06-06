@@ -10,7 +10,7 @@ architecture: replication
 image:
   registry: docker.xuanyuan.run
   repository: bitnamilegacy/mysql
-  tag: "9.4.0"                             # 使用 MySQL 8.0 镜像
+  tag: "8.0.40-debian-12-r5"                             # 使用 MySQL 8.0 镜像
 
 # 认证配置
 auth:
@@ -55,3 +55,11 @@ secondary:
     limits:
       cpu: "250m"
       memory: "512Mi"
+
+startupProbe:
+  failureThreshold: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+
+livenessProbe:
+  initialDelaySeconds: 60
