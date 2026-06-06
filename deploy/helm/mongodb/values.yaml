@@ -1,0 +1,70 @@
+global:
+  security:
+    allowInsecureImages: true
+  storageClass: "local-path-retain"
+
+image:
+  registry: docker.xuanyuan.run
+  repository: bitnamilegacy/mongodb
+  tag: "8.0.13-debian-12-r0"
+
+# 部署架构：standalone（单节点）或 replicaset（副本集）
+# 开发环境用 standalone，生产环境用 replicaset
+architecture: replicaset
+
+# 副本集节点数（仅在 replicaset 模式下生效）
+replicaCount: 2
+
+# 认证配置
+auth:
+  enabled: true
+  rootPassword: "IAMmongopassword123"
+
+
+# 持久化配置
+persistence:
+  enabled: true
+  size: 6Gi  # 开发环境 8G 足够
+
+# 资源限制（4C8G 机器）
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 1Gi
+
+# MongoDB 服务端口
+service:
+  ports:
+    mongodb: 27017
+
+# TLS（开发环境先关闭）
+tls:
+  enabled: false
+
+# 监控（可选，先不开启）
+metrics:
+  enabled: false
+
+# 为仲裁节点（Arbiter）设置资源
+arbiter:
+  resources:
+    requests:
+      cpu: 100m     # 0.1 个 CPU 核心
+      memory: 128Mi
+    limits:
+      cpu: 200m     # 限制最多使用 0.2 个 CPU 核心
+      memory: 256Mi
+
+# 为 MCP (MongoDB 运维/备份相关组件，如果启用了该组件) 设置资源
+mcp:
+  auth:
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
