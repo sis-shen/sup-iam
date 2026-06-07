@@ -13,8 +13,9 @@ import (
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/sis-shen/sup-iam/internal/iam-pump/analytics"
 	"github.com/sis-shen/sup-iam/internal/pkg/log"
-	"github.com/vinllen/mgo"
-	"net"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+	"go.mongodb.org/mongo-driver/v2/mongo/options"
 	"os"
 	"strconv"
 	"strings"
@@ -32,8 +33,9 @@ const (
 
 type MongoPump struct {
 	CommonPump
-	session *mgo.Session
-	config  *MongoConf
+	client *mongo.Client
+	config *MongoConf
+	dbName string
 }
 
 var _ PumpInterface = (*MongoPump)(nil)
@@ -167,20 +169,20 @@ func (m *MongoPump) Init(config interface{}) error {
 }
 
 func (m *MongoPump) connect() error {
-	dialogInfo, err := m.mongoDialInfo(m.config.BaseMongoConf)
+	clientOpts, err := m.mongoDialInfo(m.config.BaseMongoConf)
 	if err != nil {
 		log.Errorf("fail to connect to mongodb: %s", err)
 		return err
 	}
 
-	// TODO hard code
-	dialogInfo.Timeout = 5 * time.Second
-	m.session, err = mgo.DialWithInfo(dialogInfo)
+	// Extract database name from URI
+	m.dbName = extractDatabaseName(m.config.URL)
 
+	m.client, err = mongo.Connect(clientOpts)
 	if err != nil {
 		log.Errorf("fail to connect to mongodb: %s, but retrying once", err)
 		time.Sleep(5 * time.Second)
-		m.session, err = mgo.DialWithInfo(dialogInfo)
+		m.client, err = mongo.Connect(clientOpts)
 		if err != nil {
 			log.Errorf("fail to connect to mongodb: %s", err)
 			return err
@@ -188,89 +190,119 @@ func (m *MongoPump) connect() error {
 	}
 
 	if m.config.DBType == "" {
-		m.config.DBType = MongoType(queryMongoType(m.session))
+		m.config.DBType = MongoType(queryMongoType(m.client))
 	}
 
 	return nil
 }
 
-func (m *MongoPump) mongoDialInfo(conf BaseMongoConf) (dialInfo *mgo.DialInfo, err error) {
-	if dialInfo, err = mgo.ParseURL(m.config.URL); err != nil {
-		return dialInfo, errors.Join(err, errors.New(fmt.Sprintf("fail to parse mongodb url: %s", m.config.URL)))
-	}
+func (m *MongoPump) mongoDialInfo(conf BaseMongoConf) (*options.ClientOptions, error) {
+	clientOpts := options.Client().ApplyURI(m.config.URL)
+	clientOpts.SetTimeout(30 * time.Second)
 
 	if conf.UseSSL {
-		dialInfo.DialServer = func(addr *mgo.ServerAddr) (net.Conn, error) {
-			tlsConfig := &tls.Config{}
-			if conf.SSLInsecureSkipVerify {
-				tlsConfig.InsecureSkipVerify = true
+		tlsConfig := &tls.Config{}
+		if conf.SSLInsecureSkipVerify {
+			tlsConfig.InsecureSkipVerify = true
+		}
+		if conf.SSLCAFile != "" {
+			caCert, err := os.ReadFile(conf.SSLCAFile)
+			if err != nil {
+				return nil, errors.Join(err, fmt.Errorf("fail to read CA file: %s", conf.SSLCAFile))
 			}
-			if conf.SSLCAFile != "" {
-				var caCert []byte
-				caCert, err := os.ReadFile(conf.SSLCAFile)
-				if err != nil {
-					return nil, errors.Join(err, errors.New(fmt.Sprintf("fail to read CA file: %s", conf.SSLCAFile)))
-				}
-				caCertPool := x509.NewCertPool()
-				caCertPool.AppendCertsFromPEM(caCert)
-				tlsConfig.ClientCAs = caCertPool
-			}
-			if conf.SSLAllowInvalidHosts {
-				tlsConfig.InsecureSkipVerify = true
-				tlsConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
-					certs := make([]*x509.Certificate, len(rawCerts))
-					for i, asn1Data := range rawCerts {
-						var cert *x509.Certificate
-						cert, err = x509.ParseCertificate(asn1Data)
-						if err != nil {
-							return err
-						}
-						certs[i] = cert
+			caCertPool := x509.NewCertPool()
+			caCertPool.AppendCertsFromPEM(caCert)
+			tlsConfig.RootCAs = caCertPool
+		}
+		if conf.SSLAllowInvalidHosts {
+			tlsConfig.InsecureSkipVerify = true
+			tlsConfig.VerifyPeerCertificate = func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+				certs := make([]*x509.Certificate, len(rawCerts))
+				for i, asn1Data := range rawCerts {
+					cert, err := x509.ParseCertificate(asn1Data)
+					if err != nil {
+						return err
 					}
-
-					opts := x509.VerifyOptions{
-						Roots:         tlsConfig.RootCAs,
-						CurrentTime:   time.Now(),
-						DNSName:       "", // <- skip hostname verification
-						Intermediates: x509.NewCertPool(),
-					}
-
-					for i, cert := range certs {
-						if i == 0 {
-							continue
-						}
-						opts.Intermediates.AddCert(cert)
-					}
-					_, err = certs[0].Verify(opts)
-
-					return err
-				}
-			}
-
-			if conf.SSLKEMKeyFile != "" {
-				cert, err := loadCertificateAndKeyFromFile(conf.SSLKEMKeyFile)
-				if err != nil {
-					log.Fatalf("fail to load keypair: %s", err)
-					return nil, err
+					certs[i] = cert
 				}
 
-				tlsConfig.Certificates = []tls.Certificate{*cert}
+				opts := x509.VerifyOptions{
+					Roots:         tlsConfig.RootCAs,
+					CurrentTime:   time.Now(),
+					DNSName:       "", // <- skip hostname verification
+					Intermediates: x509.NewCertPool(),
+				}
+
+				for i, cert := range certs {
+					if i == 0 {
+						continue
+					}
+					opts.Intermediates.AddCert(cert)
+				}
+				_, err := certs[0].Verify(opts)
+
+				return err
+			}
+		}
+
+		if conf.SSLKEMKeyFile != "" {
+			cert, err := loadCertificateAndKeyFromFile(conf.SSLKEMKeyFile)
+			if err != nil {
+				log.Fatalf("fail to load keypair: %s", err)
+				return nil, err
 			}
 
-			return tls.Dial("tcp", addr.String(), tlsConfig)
+			tlsConfig.Certificates = []tls.Certificate{*cert}
+		}
+
+		clientOpts.SetTLSConfig(tlsConfig)
+	}
+
+	return clientOpts, nil
+}
+
+// extractDatabaseName extracts the database name from a MongoDB connection URI.
+func extractDatabaseName(uri string) string {
+	prefix := "mongodb://"
+	if strings.HasPrefix(uri, "mongodb+srv://") {
+		prefix = "mongodb+srv://"
+	}
+
+	rest := uri[len(prefix):]
+
+	// Remove user:password@ part
+	if atIndex := strings.LastIndex(rest, "@"); atIndex != -1 {
+		rest = rest[atIndex+1:]
+	}
+
+	// Remove query parameters
+	if qIndex := strings.Index(rest, "?"); qIndex != -1 {
+		rest = rest[:qIndex]
+	}
+
+	// Remove options (semicolon separated)
+	if sIndex := strings.Index(rest, ";"); sIndex != -1 {
+		rest = rest[:sIndex]
+	}
+
+	// Now we should have host[:port][/dbname]
+	if slashIndex := strings.Index(rest, "/"); slashIndex != -1 {
+		dbName := rest[slashIndex+1:]
+		if dbName != "" {
+			return dbName
 		}
 	}
 
-	return dialInfo, err
+	return ""
 }
 
-func queryMongoType(session *mgo.Session) MongoType {
+func queryMongoType(client *mongo.Client) MongoType {
 	// Querying for the features which 100% not supported by AWS DocumentDB
 	var result struct {
 		Code int `bson:"code"`
 	}
 
-	_ = session.Run("features", &result)
+	_ = client.Database("admin").RunCommand(context.Background(), bson.D{{Key: "features", Value: 1}}).Decode(&result)
 
 	if result.Code == 303 {
 		return AWSMongo
@@ -306,10 +338,10 @@ func (m *MongoPump) capCollection() error {
 		log.Infof("-- No max collection size set for %s, defaulting to %d", m.config.CollectionName, m.config.CollectionCapMaxSizeBytes)
 	}
 
-	session := m.session.Copy()
-	defer session.Close()
-
-	err = session.DB("").C(m.config.CollectionName).Create(&mgo.CollectionInfo{Capped: true, MaxBytes: m.config.CollectionCapMaxSizeBytes})
+	err = m.client.Database(m.dbName).CreateCollection(context.Background(),
+		m.config.CollectionName,
+		options.CreateCollection().SetCapped(true).SetSizeInBytes(int64(m.config.CollectionCapMaxSizeBytes)),
+	)
 	if err != nil {
 		log.Errorf("fail to create collection: %s", err)
 		return err
@@ -320,16 +352,13 @@ func (m *MongoPump) capCollection() error {
 }
 
 func (m *MongoPump) collectionExists(name string) (bool, error) {
-	session := m.session.Copy()
-	defer session.Close()
-
-	colNmaes, err := session.DB("").CollectionNames()
+	colNames, err := m.client.Database(m.dbName).ListCollectionNames(context.Background(), bson.D{})
 	if err != nil {
 		log.Fatalf("fail to get collection names: %s", err)
 		return false, err
 	}
 
-	for _, colName := range colNmaes {
+	for _, colName := range colNames {
 		if colName == name {
 			return true, nil
 		}
@@ -346,7 +375,7 @@ func (m *MongoPump) WriteData(ctx context.Context, keyValues []interface{}) erro
 
 	log.Debugf("Writing data to collection: %s", collectionName)
 
-	for m.session == nil {
+	for m.client == nil {
 		log.Debugf("Waiting for session to come up...")
 		err := m.connect()
 		if err != nil {
@@ -356,11 +385,9 @@ func (m *MongoPump) WriteData(ctx context.Context, keyValues []interface{}) erro
 
 	for _, dataSet := range m.accumulateSet(keyValues) {
 		// 并行写入数据
-		go func(dataSet interface{}) {
-			session := m.session.Copy()
-			defer session.Close()
-			analyticsCollection := session.DB("").C(collectionName)
-			err := analyticsCollection.Insert(dataSet)
+		go func(dataSet []interface{}) {
+			collection := m.client.Database(m.dbName).Collection(collectionName)
+			_, err := collection.InsertMany(context.Background(), dataSet)
 			if err != nil {
 				log.Errorf("Error inserting data to collection: %s", err)
 				if strings.Contains(strings.ToLower(err.Error()), "closed explicitly") {
