@@ -65,12 +65,12 @@ func getAddrs(o *genericoptions.RedisOptions) (addrs []string) {
 func newRedisClusterPool(forceReconnect bool, conf genericoptions.RedisOptions) redis.UniversalClient {
 	mtx.Lock()
 	defer mtx.Unlock()
-	if !forceReconnect && redisClusterSingleton != nil {
+	if !forceReconnect && redisClusterSingleton != nil && redisClusterSingleton.db != nil {
 		log.Debug("Redis pool already INITIALIZED")
 		return redisClusterSingleton.db
 	}
 
-	if forceReconnect && redisClusterSingleton != nil {
+	if forceReconnect && redisClusterSingleton != nil && redisClusterSingleton.db != nil {
 		_ = redisClusterSingleton.db.Close()
 	}
 	log.Debug("Creating new Redis Pool")
