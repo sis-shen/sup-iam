@@ -86,9 +86,9 @@ apiServer:
   name: iam-api-server
   secretName: iam-api-secret
   image:
-    repository: ghcr.io/sis-shen/iam-api-server
+    repository: ghcr.io/sis-shen/supdriver/iam-api-server
     tag: "latest"
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   containerPorts:
     - name: http
       containerPort: 8080
@@ -139,9 +139,9 @@ authzServer:
   name: iam-auth-server
   secretName: iam-auth-secret
   image:
-    repository: ghcr.io/sis-shen/iam-auth-server
+    repository: ghcr.io/sis-shen/supdriver/iam-auth-server
     tag: "latest"
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   containerPorts:
     - name: http
       containerPort: 8080
@@ -187,9 +187,9 @@ iamPump:
   name: iam-pump
   secretName: iam-pump-secret
   image:
-    repository: ghcr.io/sis-shen/iam-pump
+    repository: ghcr.io/sis-shen/supdriver/iam-pump
     tag: "latest"
-    pullPolicy: IfNotPresent
+    pullPolicy: Always
   containerPorts:
     - name: healthz
       containerPort: 7070
