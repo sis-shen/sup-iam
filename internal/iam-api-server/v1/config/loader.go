@@ -155,6 +155,7 @@ func autoConfigFilePath() string {
 
 	// 1. 从环境变量获取
 	if envFile := os.Getenv("IAM_CONFIG_FILE"); envFile != "" {
+		fmt.Printf("从环境变量IAM_CONFIG_FILE获取到配置路径: %s\n", envFile)
 		return envFile
 	}
 
@@ -175,7 +176,7 @@ func autoConfigFilePath() string {
 	default:
 		configName = "config.yaml"
 	}
-
+	fmt.Printf("选取配置文件名为: %s\n", configName)
 	// 3. 搜索配置文件
 	searchPaths := []string{
 		".",                           // 当前目录
@@ -191,6 +192,7 @@ func autoConfigFilePath() string {
 		}
 	}
 
+	fmt.Printf("未找到配置文件")
 	return ""
 }
 
