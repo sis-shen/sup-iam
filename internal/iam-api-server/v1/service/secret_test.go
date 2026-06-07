@@ -19,7 +19,7 @@ func TestSecretCase_RotateSecret_Success(t *testing.T) {
 	mockRepo := repomock.NewMockSecretRepository(ctrl)
 	k := keys.NewKeys(0, 0)
 	secretCase := NewSecretCase(mockRepo)
-	secretCase.keys = *k
+	secretCase.keys = k
 
 	oldSecret := &model.Secret{
 		ID:        1,
@@ -181,7 +181,7 @@ func TestSecretCase_GetSecretBindingPolicy_Success(t *testing.T) {
 func TestSecretCase_VerifySecret_Valid(t *testing.T) {
 	k := keys.NewKeys(0, 0)
 	secretCase := NewSecretCase(nil)
-	secretCase.keys = *k
+	secretCase.keys = k
 
 	payload := "test-payload"
 	sig, _ := k.SignWithKey("my-secret", payload)
@@ -194,7 +194,7 @@ func TestSecretCase_VerifySecret_Valid(t *testing.T) {
 func TestSecretCase_VerifySecret_Invalid(t *testing.T) {
 	k := keys.NewKeys(0, 0)
 	secretCase := NewSecretCase(nil)
-	secretCase.keys = *k
+	secretCase.keys = k
 
 	ok, err := secretCase.VerifySecret("my-secret", "payload", "wrong-signature")
 	assert.NoError(t, err)
@@ -204,7 +204,7 @@ func TestSecretCase_VerifySecret_Invalid(t *testing.T) {
 func TestSecretCase_GenerateSecretKey_NotEmpty(t *testing.T) {
 	k := keys.NewKeys(0, 0)
 	secretCase := NewSecretCase(nil)
-	secretCase.keys = *k
+	secretCase.keys = k
 
 	sk := secretCase.GenerateSecretKey()
 	assert.NotEmpty(t, sk)
@@ -213,7 +213,7 @@ func TestSecretCase_GenerateSecretKey_NotEmpty(t *testing.T) {
 func TestSecretCase_GenerateAccessKey_NotEmpty(t *testing.T) {
 	k := keys.NewKeys(0, 0)
 	secretCase := NewSecretCase(nil)
-	secretCase.keys = *k
+	secretCase.keys = k
 
 	ak := secretCase.GenerateAccessKey()
 	assert.NotEmpty(t, ak)

@@ -80,8 +80,72 @@ func TestMongoPump_New(t *testing.T) {
 
 	mongoPump, ok := pump.(*MongoPump)
 	assert.True(t, ok, "New() should return a *MongoPump")
-	assert.Nil(t, mongoPump.session, "New instance should have nil session")
+	assert.Nil(t, mongoPump.client, "New instance should have nil client")
 	assert.Nil(t, mongoPump.config, "New instance should have nil config")
+}
+
+func TestExtractDatabaseName(t *testing.T) {
+	tests := []struct {
+		name string
+		uri  string
+		want string
+	}{
+		{
+			name: "database in path",
+			uri:  "mongodb://root:pass@host:27017/admin?replicaSet=rs0",
+			want: "admin",
+		},
+		{
+			name: "authSource fallback when no db in path",
+			uri:  "mongodb://root:pass@host:27017/?authSource=admin&replicaSet=rs0",
+			want: "admin",
+		},
+		{
+			name: "authSource fallback with no trailing slash db",
+			uri:  "mongodb://host:27017,host2:27017/?authSource=testdb&replicaSet=rs0",
+			want: "testdb",
+		},
+		{
+			name: "path takes priority over authSource",
+			uri:  "mongodb://host:27017/mydb?authSource=admin&replicaSet=rs0",
+			want: "mydb",
+		},
+		{
+			name: "no database and no authSource",
+			uri:  "mongodb://host:27017",
+			want: "",
+		},
+		{
+			name: "no database and no authSource with trailing slash",
+			uri:  "mongodb://host:27017/",
+			want: "",
+		},
+		{
+			name: "srv scheme with db in path",
+			uri:  "mongodb+srv://host.example.com/mydb",
+			want: "mydb",
+		},
+		{
+			name: "srv scheme with authSource fallback",
+			uri:  "mongodb+srv://host.example.com/?authSource=admin",
+			want: "admin",
+		},
+		{
+			name: "with username and password",
+			uri:  "mongodb://user:pass@host:27017/dbname?authSource=admin",
+			want: "dbname",
+		},
+		{
+			name: "password with special chars",
+			uri:  "mongodb://user:IAMpass123@host:27017,host2:27017/test?replicaSet=rs0",
+			want: "test",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, extractDatabaseName(tt.uri))
+		})
+	}
 }
 
 func TestGetPumpByName_AvailablePumpsMap(t *testing.T) {
