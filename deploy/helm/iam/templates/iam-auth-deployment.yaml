@@ -45,7 +45,7 @@ spec:
       containers:
       - name: {{ .Values.authzServer.name }}
         command:
-        - /app/iam-auth-server
+        - /app/iamauthserver
         envFrom:
         - secretRef:
             name: {{ .Values.authzServer.secretName }}
@@ -76,7 +76,7 @@ spec:
         resources:
           {{- toYaml .Values.authzServer.resources | nindent 12 }}
         volumeMounts:
-        - mountPath: /app/config
+        - mountPath: /etc/iam/{{ .Values.authzServer.configFileName }}.yaml
           name: config-volume
           readOnly: true
           subPath: {{ .Values.authzServer.configFileName }}.yaml

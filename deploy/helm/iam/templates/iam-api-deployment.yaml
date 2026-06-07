@@ -45,7 +45,13 @@ spec:
       containers:
       - name: {{ .Values.apiServer.name }}
         command:
-        - /app/iam-api-server
+        - /bin/sh
+        - -c
+        - |
+          ls -al /etc/iam
+          exec /app/iamapiserver
+        # command: ["sleep"]
+        # args: ["infinity"]
         envFrom:
         - secretRef:
             name: {{ .Values.apiServer.secretName }}
@@ -76,7 +82,7 @@ spec:
         resources:
           {{- toYaml .Values.apiServer.resources | nindent 12 }}
         volumeMounts:
-        - mountPath: /app/config
+        - mountPath: /etc/iam/{{ .Values.apiServer.configFileName }}.yaml
           name: config-volume
           readOnly: true
           subPath: {{ .Values.apiServer.configFileName }}.yaml

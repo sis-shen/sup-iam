@@ -46,6 +46,8 @@ spec:
       - name: {{ .Values.iamPump.name }}
         command:
         - /app/iam-pump
+        # command: ["sleep"]
+        # args: ["infinity"]
         envFrom:
         - secretRef:
             name: {{ .Values.iamPump.secretName }}
@@ -76,7 +78,7 @@ spec:
         resources:
           {{- toYaml .Values.iamPump.resources | nindent 12 }}
         volumeMounts:
-        - mountPath: /app/config
+        - mountPath: /etc/iam/{{ .Values.iamPump.configFileName }}.yaml
           name: config-volume
           readOnly: true
           subPath: {{ .Values.iamPump.configFileName }}.yaml
