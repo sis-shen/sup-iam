@@ -141,7 +141,12 @@ kube-cm-update: ## 更新 ConfigMap 文件
 .PHONY: kube-secret-create
 kube-secret-create: ## 生成 Secret 文件
 	@echo "生成 Secret 文件..."
-	@kubectl -n iam create secret generic iam-api-secret --from-file=config/secret/iam-api-env.yaml
+	@kubectl -n iam delete secret iam-api-secret --ignore-not-found
+	@kubectl -n iam delete secret iam-auth-secret --ignore-not-found
+	@kubectl -n iam delete secret iam-pump-secret --ignore-not-found
+	@kubectl -n iam create secret generic iam-api-secret --from-env-file=config/secret/iam-api-env.env
+	@kubectl -n iam create secret generic iam-auth-secret --from-env-file=config/secret/iam-auth-env.env
+	@kubectl -n iam create secret generic iam-pump-secret --from-env-file=config/secret/iam-pump-env.env
 
 # ======== k8s iam ========
 .PHONY: helm-iam-lint
