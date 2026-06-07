@@ -62,7 +62,7 @@ mysql:
   # 数据库密码（必须通过环境变量 IAM_MYSQL_PASSWORD 注入）
   password: ""
   # 数据库名称
-  database_name: "iam"
+  database_name: "sup_iam"
   # 最大空闲连接数
   max_idle_conns: 10
   # 最大打开连接数

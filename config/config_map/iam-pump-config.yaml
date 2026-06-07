@@ -13,7 +13,7 @@ pumps:
     timeout: 1s                   # 单次 pump 操作超时
     omit_detail_recoding: true    # 是否省略详细记录
     meta:
-      url: "mongodb://root:IAMmongopassword123@mongodb-dev-0.mongodb-dev-headless.iam.svc.cluster.local:27017,mongodb-dev-1.mongodb-dev-headless.iam.svc.cluster.local:27017/?replicaSet=rs0"
+      url: "mongodb://root:IAMmongopassword123@mongodb-dev-0.mongodb-dev-headless:27017,mongodb-dev-1.mongodb-dev-headless:27017/admin?replicaSet=rs0"
       use_ssl: false
       ssl_skip_verify: true
       ssl_allow_invalid_hosts: true
@@ -23,7 +23,7 @@ pumps:
       collection_name: "analytics"
       max_insert_batch_size_bytes: 5242880       # 5MB
       max_document_size_bytes: 5242880            # 5MB
-      collection_cap_max_size_bytes: 1*1024*1024*1024      # 1GB
+      collection_cap_max_size_bytes: 1073741824      # 1GB
       collection_cap_enabled: true
 
 # ============================================================
@@ -31,7 +31,7 @@ pumps:
 # ============================================================
 leader_lease_duration: 10s        # 主节点租约时长
 purge_interval: 1s                # 数据清理间隔
-health_check_path: "/health"      # 健康检查路径
+health_check_path: "/healthz"      # 健康检查路径
 health_check_address: "0.0.0.0:7070"  # 健康检查监听地址（字段名与结构体 tag 一致）
 omit_detail_recoding: true        # 全局是否省略详细记录
 
@@ -42,8 +42,8 @@ redis_options:
   host: "redis-cluster"
   port: 6379
   addrs: []                       # 集群地址列表（优先于 host+port）
-  username: "iam"
-  password: ""
+  username: "default"
+  password: "IAMredispassword123"
   database_name: 0
   health_check_interval: 5s
   enable_cluster: true

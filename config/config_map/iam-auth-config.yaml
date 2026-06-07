@@ -28,6 +28,8 @@ server:
   redis_key_prefix: "iam:log:"
   # 日志同步级别（debug/info/warn/error），为空则同步所有级别
   sink_level: "info"
+  # 全量缓存的刷新间隔
+  load_cache_ttl: 1s
 
 # ========== gRPC配置 ==========
 grpc:
@@ -45,7 +47,7 @@ redis:
   host: "redis-cluster"
   port: 6379
   addrs: []                       # 集群地址列表（优先于 host+port）
-  username: "iam"
+  username: "default"
   password: ""
   database_name: 0
   health_check_interval: 5s
@@ -107,6 +109,6 @@ cache:
   # 访问平率计数器数量
   num_counters: 1000
   # 缓存最大容量
-  max_cost: 1 *1024 * 1024 * 1024  # 1GB
+  max_cost: 1073741824  # 1 *1024 * 1024 * 1024  # 1GB
   # Get操作缓冲区通道大小
   buffer_items: 64
