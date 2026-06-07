@@ -25,7 +25,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
               -X main.BuildTime=${BUILD_TIME}" \
         -mod=readonly -o /tmp/iam-pump .
 
-FROM scratch AS runtime
+FROM ubuntu AS runtime
 ENV GIN_MODE=release
 COPY --from=build /tmp/iam-pump /app/iam-pump
 EXPOSE 8080/tcp

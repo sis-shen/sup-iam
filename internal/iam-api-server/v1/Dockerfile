@@ -21,7 +21,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build \
               -X main.BuildTime=${BUILD_TIME}" \
         -mod=readonly -o /tmp/iam-api-server .
 
-FROM scratch AS runtime
+FROM ubuntu AS runtime
 ENV GIN_MODE=release
 COPY --from=build /tmp/iam-api-server /app/iamapiserver
 EXPOSE 8080/tcp
