@@ -21,7 +21,7 @@ CREATE TABLE users (
                        phone VARCHAR(20) DEFAULT NULL COMMENT '手机号',
                        email VARCHAR(256) DEFAULT NULL COMMENT '邮箱',
                        isAdmin TINYINT(1) DEFAULT 0 COMMENT '是否管理员',
-                       extandShadow LONGTEXT DEFAULT NULL COMMENT '扩展字段',
+                       extendShadow LONGTEXT DEFAULT NULL COMMENT '扩展字段',
                        loggedAt TIMESTAMP NULL DEFAULT NULL COMMENT '最近登录时间',
                        createdAt TIMESTAMP NOT NULL COMMENT '创建时间',
                        updatedAt TIMESTAMP NOT NULL COMMENT '更新时间',
