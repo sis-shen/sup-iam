@@ -114,8 +114,7 @@ func main() {
 
 	// ========= 4.初始化router
 	routes := initRoutes(logger, mysqlCli, jm, blackList)
-	router := server.NewRouter(routes)
-	router.Use(jwtMiddleWare)
+	router := server.NewRouter(routes, jwtMiddleWare)
 
 	//======== 5.启动HTTPServer
 	go genericapiserver.ServeHealthCheck(conf.Server.HealthPath, conf.Server.HealthAddr)

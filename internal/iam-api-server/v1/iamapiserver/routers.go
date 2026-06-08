@@ -29,8 +29,12 @@ type Route struct {
 }
 
 // NewRouter returns a new router.
-func NewRouter(handleFunctions ApiHandleFunctions) *gin.Engine {
-	return NewRouterWithGinEngine(gin.Default(), handleFunctions)
+func NewRouter(handleFunctions ApiHandleFunctions, jwtMiddleware gin.HandlerFunc) *gin.Engine {
+	e := gin.Default()
+	if jwtMiddleware != nil {
+		e.Use(jwtMiddleware)
+	}
+	return NewRouterWithGinEngine(e, handleFunctions)
 }
 
 // NewRouter add routes to existing gin engine.
