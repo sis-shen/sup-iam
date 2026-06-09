@@ -29,6 +29,7 @@ import (
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	_ "google.golang.org/grpc/encoding/gzip"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	mysqllogger "gorm.io/gorm/logger"
