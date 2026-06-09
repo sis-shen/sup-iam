@@ -23,16 +23,16 @@ func TestNewKeys_CustomValues(t *testing.T) {
 func TestGenerateAccessKey_Length(t *testing.T) {
 	k := NewKeys(32, 128)
 	ak := k.GenerateAccessKey()
-	// 总长度 = 16(timestampHex) + 2*(AccessKeyLength-20)(randomHex) + 4(counterHex)
-	// AccessKeyLength=32 => 16 + 2*(32-20) + 4 = 44
-	require.Equal(t, 44, len(ak))
+	// 总长度 = 16(timestampHex) + (AccessKeyLength-20)(randomHex) + 4(counterHex)
+	// AccessKeyLength=32 => 16 + 12 + 4 = 32
+	require.Equal(t, 32, len(ak))
 }
 
 func TestGenerateAccessKey_LargerLength(t *testing.T) {
 	k := NewKeys(64, 128)
 	ak := k.GenerateAccessKey()
-	// AccessKeyLength=64 => 16 + 2*(64-20) + 4 = 108
-	require.Equal(t, 108, len(ak))
+	// 总长度 = 16(timestampHex) + 44(randomHex) + 4(counterHex) = 64
+	require.Equal(t, 64, len(ak))
 }
 
 func TestGenerateAccessKey_HexEncoding(t *testing.T) {
@@ -70,16 +70,16 @@ func TestGenerateAccessKey_Unique(t *testing.T) {
 func TestGenerateSecretKey_Length(t *testing.T) {
 	k := NewKeys(32, 128)
 	sk := k.GenerateSecretKey()
-	// 总长度 = 16(timestampHex) + 2*(SecretKeyLength-20)(randomHex) + 4(counterHex)
-	// SecretKeyLength=128 => 16 + 2*(128-20) + 4 = 236
-	require.Equal(t, 236, len(sk))
+	// 总长度 = 16(timestampHex) + (SecretKeyLength-20)(randomHex) + 4(counterHex)
+	// SecretKeyLength=128 => 16 + 108 + 4 = 128
+	require.Equal(t, 128, len(sk))
 }
 
 func TestGenerateSecretKey_LargerLength(t *testing.T) {
 	k := NewKeys(32, 256)
 	sk := k.GenerateSecretKey()
-	// SecretKeyLength=256 => 16 + 2*(256-20) + 4 = 492
-	require.Equal(t, 492, len(sk))
+	// 总长度 = 16(timestampHex) + 236(randomHex) + 4(counterHex) = 256
+	require.Equal(t, 256, len(sk))
 }
 
 func TestGenerateSecretKey_Unique(t *testing.T) {

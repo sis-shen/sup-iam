@@ -19,17 +19,24 @@ type KeysInterface interface {
 }
 
 type Keys struct {
-	AccessKeyLength int `json:"access_key_length"` // AccessKey 随机部分长度（字节），至少32字节
-	SecretKeyLength int `json:"secret_key_length"` // SecretKey 随机部分长度（字节），至少128字节
+	AccessKeyLength int `json:"access_key_length"` // AccessKey 总输出长度，至少32
+	SecretKeyLength int `json:"secret_key_length"` // SecretKey 总输出长度，至少128
 }
 
 func NewKeys(accessKeyLength int, secretKeyLength int) *Keys {
 	if accessKeyLength < 32 {
 		accessKeyLength = 32
 	}
+	// 确保总输出长度中 hex 部分对齐（AccessKeyLength-20 必须为偶数）
+	if (accessKeyLength-20)%2 != 0 {
+		accessKeyLength--
+	}
 
 	if secretKeyLength < 128 {
 		secretKeyLength = 128
+	}
+	if (secretKeyLength-20)%2 != 0 {
+		secretKeyLength--
 	}
 
 	return &Keys{
@@ -46,8 +53,10 @@ func (k *Keys) GenerateSecretKey() string {
 	timestamp := uint64(time.Now().UnixNano())
 	timestampHex := fmt.Sprintf("%016x", timestamp)
 
-	// 2. 生成随机字节（输出总长度 = 16 + 2*randomLen + 4）
-	randomLen := max(0, k.SecretKeyLength-20)
+	// 2. 生成随机字节，使输出总长度等于 SecretKeyLength
+	//    输出格式: timestampHex(16) + randomHex + counterHex(4)
+	//    因此 randomHex 长度 = SecretKeyLength - 20, 对应 randomBytes = (SecretKeyLength - 20) / 2
+	randomLen := max(0, (k.SecretKeyLength-20)/2)
 	randomBytes := make([]byte, randomLen)
 	_, _ = rand.Read(randomBytes)
 	randomHex := hex.EncodeToString(randomBytes)
@@ -65,8 +74,10 @@ func (k *Keys) GenerateAccessKey() string {
 	timestamp := uint64(time.Now().UnixNano())
 	timestampHex := fmt.Sprintf("%016x", timestamp)
 
-	// 2. 生成随机字节（输出总长度 = 16 + 2*randomLen + 4）
-	randomLen := max(0, k.AccessKeyLength-20)
+	// 2. 生成随机字节，使输出总长度等于 AccessKeyLength
+	//    输出格式: timestampHex(16) + randomHex + counterHex(4)
+	//    因此 randomHex 长度 = AccessKeyLength - 20, 对应 randomBytes = (AccessKeyLength - 20) / 2
+	randomLen := max(0, (k.AccessKeyLength-20)/2)
 	randomBytes := make([]byte, randomLen)
 	_, _ = rand.Read(randomBytes)
 	randomHex := hex.EncodeToString(randomBytes)
