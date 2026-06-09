@@ -141,7 +141,7 @@ func main() {
 	if err != nil {
 		logger.Errorf("grpc fail to list: %v", err)
 	}
-	grpcServer := initGrpcServer(mysqlCli)
+	grpcServer := initGrpcServer(mysqlCli, conf.GrpcConfig)
 
 	if conf.GrpcConfig.EtcdServerDiscovery {
 		cli, err := etcdclient.NewFromURL(fmt.Sprintf("%s:%d", conf.GrpcConfig.EtcdHost, conf.GrpcConfig.EtcdPort))
@@ -310,12 +310,15 @@ func keepAliveLease(cli *etcdclient.Client, leaseID etcdclient.LeaseID, stopCh <
 	}
 }
 
-func initGrpcServer(mysqlCli *gorm.DB) *grpc.Server {
+func initGrpcServer(mysqlCli *gorm.DB, conf *config.GrpcConfig) *grpc.Server {
 	if mysqlCli == nil {
 		return nil
 	}
 
-	grpcServer := grpc.NewServer()
+	grpcServer := grpc.NewServer(
+		grpc.MaxRecvMsgSize(conf.MaxRecvMsgSize),
+		grpc.MaxSendMsgSize(conf.MaxSendMsgSize),
+	)
 	secretStore := mysqlDB.NewSecretStore(mysqlCli)
 	secretCase := service.NewSecretCase(secretStore)
 

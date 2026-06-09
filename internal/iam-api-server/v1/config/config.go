@@ -64,4 +64,6 @@ type GrpcConfig struct {
 	ServiceName         string        `mapstructure:"service_name"`
 	LeaseTTL            time.Duration `mapstructure:"lease_ttl"`
 	ServiceAddress      string        `mapstructure:"service_address"`
+	MaxRecvMsgSize      int           `mapstructure:"max_recv_msg_size"`
+	MaxSendMsgSize      int           `mapstructure:"max_send_msg_size"`
 }

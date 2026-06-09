@@ -13,6 +13,7 @@ import (
 	storeredis "github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/storage/redis"
 	"github.com/sis-shen/sup-iam/internal/pkg/keys"
 	genericapiserver "github.com/sis-shen/sup-iam/internal/pkg/server"
+	"google.golang.org/grpc/encoding/gzip"
 
 	"github.com/sis-shen/sup-iam/internal/pkg/log"
 	"github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v2"
@@ -245,6 +246,9 @@ func newGrpcConn(conf config.GrpcConfig, logger log.Logger) (*grpc.ClientConn, e
 			grpc.WithResolvers(builder),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			grpc.WithDefaultServiceConfig(`{"loadBalancingPolicy":"round_robin"}`),
+			grpc.WithDefaultCallOptions(
+				grpc.UseCompressor(gzip.Name),
+				grpc.MaxCallRecvMsgSize(conf.MaxCallRecvMsgSize)),
 		)
 
 		if err != nil {
@@ -255,7 +259,10 @@ func newGrpcConn(conf config.GrpcConfig, logger log.Logger) (*grpc.ClientConn, e
 		return conn, nil
 	} else {
 		conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", conf.Host, conf.Port),
-			grpc.WithTransportCredentials(insecure.NewCredentials()))
+			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithDefaultCallOptions(
+				grpc.UseCompressor(gzip.Name),
+				grpc.MaxCallRecvMsgSize(conf.MaxCallRecvMsgSize)))
 		if err != nil {
 			logger.Fatalf("Fail to connect grpc server: %v", err.Error())
 			return nil, err

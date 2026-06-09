@@ -37,6 +37,7 @@ type GrpcConfig struct {
 	Port                int    `mapstructure:"port"`
 	EtcdServerDiscovery bool   `mapstructure:"etcd_server_discovery"`
 	ServiceName         string `mapstructure:"service_name"`
+	MaxCallRecvMsgSize  int    `mapstructure:"max_recv_msg_size"`
 }
 
 func NewConfig() *Config {
