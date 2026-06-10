@@ -173,15 +173,12 @@ func TestRedisClusterStorage_WithExpireTime_Zero(t *testing.T) {
 }
 
 func TestGetRedisClusterSingleton_NilBeforeInit(t *testing.T) {
-	// Save and restore singleton
 	oldSingleton := redisClusterSingleton
-	oldMtx := mtx
+	redisClusterSingleton = nil
 	defer func() {
 		redisClusterSingleton = oldSingleton
-		mtx = oldMtx
 	}()
 
-	redisClusterSingleton = nil
 	singleton := GetRedisClusterSingleton()
 	assert.Nil(t, singleton)
 }
