@@ -12,6 +12,9 @@ spec:
   - name: http
     protocol: TCP
     {{- toYaml .Values.authzServer.service.http| nindent 4 }}
+  - name: healthz
+    protocol: TCP
+    {{- toYaml .Values.authzServer.service.healthz| nindent 4 }}
   selector:
     app: {{ .Values.authzServer.name }}
   sessionAffinity: None
