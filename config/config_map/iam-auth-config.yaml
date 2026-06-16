@@ -6,7 +6,7 @@ server:
   # 服务器监听地址
   host: "0.0.0.0"
   # 服务器监听端口（可通过环境变量 IAM_SERVER_PORT 覆盖）
-  port: 8443
+  port: 8080
   # 运行模式: debug/release/test
   # debug模式会输出详细日志，release模式会优化性能
   mode: "debug"
@@ -36,11 +36,12 @@ grpc:
   # gRPC服务端地址（IAM API Server 的 gRPC 地址）
   host: "iam-api-server"
   # gRPC服务端端口（可通过环境变量 IAM_GRPC_PORT 覆盖）
-  port: 9090
+  port: 8081
   # 是否启用 etcd 服务发现（可通过环境变量 IAM_GRPC_ETCD_SERVER_DISCOVERY 覆盖）
   etcd_server_discovery: false
   # gRPC 服务名称（可通过环境变量 IAM_GRPC_SERVICE_NAME 覆盖）
   service_name: ""
+  max_recv_msg_size: 209715200
 
 # ========== Redis配置 ==========
 redis:

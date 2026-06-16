@@ -120,6 +120,8 @@ grpc:
   lease_ttl: 10s
   # gRPC服务注册地址（为空时自动获取本机IP+grpc端口）
   service_address: ""
+  max_recv_msg_size: 209715200
+  max_send_msg_size: 209715200
 
 # ========== 日志配置 ==========
 log:
