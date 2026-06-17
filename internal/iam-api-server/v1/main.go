@@ -19,6 +19,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/cache"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/config"
 	server "github.com/sis-shen/sup-iam/internal/iam-api-server/v1/iamapiserver"

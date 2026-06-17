@@ -21,6 +21,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/gin-gonic/gin"
 	"github.com/sis-shen/sup-iam/internal/pkg/log"
 	"github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v2"
 	"github.com/spf13/pflag"
