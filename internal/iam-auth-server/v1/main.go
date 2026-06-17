@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+
 	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/analytics"
 	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/config"
 	server "github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/go"
@@ -15,6 +16,11 @@ import (
 	genericapiserver "github.com/sis-shen/sup-iam/internal/pkg/server"
 	"google.golang.org/grpc/encoding/gzip"
 
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/sis-shen/sup-iam/internal/pkg/log"
 	"github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v2"
 	"github.com/spf13/pflag"
@@ -23,10 +29,6 @@ import (
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 var (
@@ -69,6 +71,14 @@ func main() {
 	if errs != nil && len(errs) > 0 {
 		fmt.Printf("fail to validate log: %v", errs)
 		return
+	}
+
+	if conf.Server.Mode == "release" {
+		gin.SetMode(gin.ReleaseMode)
+	} else if conf.Server.Mode == "test" {
+		gin.SetMode(gin.TestMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
 	}
 
 	//====== 2. 加载组件

@@ -12,6 +12,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/cache"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/config"
 	server "github.com/sis-shen/sup-iam/internal/iam-api-server/v1/iamapiserver"
@@ -33,12 +40,6 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 	mysqllogger "gorm.io/gorm/logger"
-	"net"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
 )
 
 var (
@@ -83,6 +84,13 @@ func main() {
 		return
 	}
 
+	if conf.Server.Mode == "release" {
+		gin.SetMode(gin.ReleaseMode)
+	} else if conf.Server.Mode == "test" {
+		gin.SetMode(gin.TestMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
+	}
 	//====== 2. 加载组件
 	logger := log.New(conf.Log)
 	mysqlCli, err := initMySQLWithRetry(*conf.MySQL, logger)
