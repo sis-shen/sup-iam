@@ -46,6 +46,12 @@ http {
         listen      ${SERVER_HOST}:${SERVER_PORT};
         server_name localhost;
 
+        # DNS resolver for dynamic upstream resolution (Docker default: 127.0.0.11)
+        resolver 127.0.0.11 8.8.8.8 1.1.1.1 valid=10s ipv6=off;
+
+        # Backend upstream variable (variable-based proxy_pass resolves DNS at runtime)
+        set $backend_upstream http://${BACKEND_HOST}:${BACKEND_PORT};
+
         # Security headers
         add_header X-Frame-Options "SAMEORIGIN" always;
         add_header X-Content-Type-Options "nosniff" always;
@@ -73,7 +79,7 @@ http {
 
         # API reverse proxy to backend
         location /api/ {
-            proxy_pass http://${BACKEND_HOST}:${BACKEND_PORT};
+            proxy_pass http://$backend_upstream;
 
             # Proxy headers
             proxy_set_header Host                  $host;

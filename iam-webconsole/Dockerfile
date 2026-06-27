@@ -23,6 +23,9 @@ FROM nginx:1.27-alpine
 # Install gettext for envsubst (already included in nginx:alpine)
 # RUN apk add --no-cache gettext
 
+# Copy default config file (can be overridden by mounting at runtime)
+COPY config.yaml /etc/iam/iam-webconsole-config.yaml
+
 # Copy nginx template
 COPY nginx/nginx.conf.template /etc/nginx/templates/nginx.conf.template
 
