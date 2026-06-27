@@ -1,0 +1,16 @@
+# IAM Web Console 配置文件
+# 部署相关配置建议通过环境变量覆盖
+
+# ========== 服务器配置 ==========
+server:
+  # Nginx 监听地址
+  host: "0.0.0.0"
+  # Nginx 监听端口（可通过环境变量 IAM_SERVER_PORT 覆盖）
+  port: 8080
+
+# ========== 后端 API 配置 ==========
+backend:
+  # API 后端服务地址（可通过环境变量 IAM_BACKEND_HOST 覆盖）
+  host: "iam-api-server"
+  # API 后端服务端口（可通过环境变量 IAM_BACKEND_PORT 覆盖）
+  port: 8080
