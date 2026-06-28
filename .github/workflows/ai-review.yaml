@@ -12,6 +12,7 @@ on:
 jobs:
   code-review:
     runs-on: ubuntu-latest
+    environment: Develop  # 使用你的Develop环境
     permissions:
       contents: read
       issues: write
@@ -21,10 +22,87 @@ jobs:
         with:
           fetch-depth: 0
           
-      - name: Run AI Code Review
-        id: review
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          
+      - name: Install dependencies
         run: |
-          npx ai-review-pipeline --json 2>&1 | tee /tmp/review-output.txt
+          pip install requests
+          
+      - name: Run AI Code Review with DeepSeek
+        id: review
+        env:
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY }}
+        run: |
+          python -c "
+          import os
+          import subprocess
+          import requests
+          import json
+          import sys
+          
+          # 获取变更的Go文件
+          result = subprocess.run(['git', 'diff', '--name-only', 'HEAD^', 'HEAD'], 
+                                 capture_output=True, text=True)
+          changed_files = [f for f in result.stdout.split('\n') if f.endswith('.go')]
+          
+          if not changed_files:
+              print('No Go files changed in this commit')
+              sys.exit(0)
+          
+          # 构建审查内容
+          review_content = 'Please review these Go files and provide feedback on code quality, potential bugs, and best practices:\n\n'
+          for file in changed_files:
+              try:
+                  with open(file, 'r') as f:
+                      file_content = f.read()
+                      review_content += f'File: {file}\n```go\n{file_content}\n```\n\n'
+              except Exception as e:
+                  print(f'Warning: Could not read {file}: {e}')
+          
+          # 限制内容长度（DeepSeek有token限制）
+          if len(review_content) > 30000:
+              review_content = review_content[:30000] + '\n... (truncated)'
+          
+          # 调用DeepSeek API
+          try:
+              response = requests.post(
+                  'https://api.deepseek.com/v1/chat/completions',
+                  headers={
+                      'Authorization': f'Bearer {os.environ[\"DEEPSEEK_API_KEY\"]}',
+                      'Content-Type': 'application/json'
+                  },
+                  json={
+                      'model': 'deepseek-chat',
+                      'messages': [
+                          {
+                              'role': 'system', 
+                              'content': 'You are an expert Go code reviewer. Provide constructive, specific feedback. Focus on code quality, potential bugs, performance issues, and Go best practices.'
+                          },
+                          {'role': 'user', 'content': review_content}
+                      ],
+                      'temperature': 0.3,
+                      'max_tokens': 4000
+                  },
+                  timeout=60
+              )
+              
+              if response.status_code == 200:
+                  result = response.json()
+                  review_output = result['choices'][0]['message']['content']
+                  print(review_output)
+              else:
+                  print(f'API Error: {response.status_code}')
+                  print(response.text)
+                  sys.exit(1)
+                  
+          except Exception as e:
+              print(f'Error calling DeepSeek API: {e}')
+              sys.exit(1)
+          " 2>&1 | tee /tmp/review-output.txt
+          
           echo "review_output=$(cat /tmp/review-output.txt | base64 -w 0)" >> $GITHUB_OUTPUT
         continue-on-error: true
         
@@ -45,13 +123,17 @@ jobs:
               issue.title === 'AI Code Review Report (Latest)'
             );
             
-            const issueBody = '## Latest Review Results\n' +
+            const changedFiles = `${{ github.event.head_commit.message }}`.split('\n')[0];
+            
+            const issueBody = '## 🤖 AI Code Review Report (DeepSeek)\n' +
               '\n**Time**: ' + new Date().toLocaleString() +
-              '\n**Commit**: `' + `${{ github.sha }}` + '`' +
-              '\n**Message**: ' + `${{ github.event.head_commit.message }}` +
-              '\n\n---\n\n### Review Output\n\n```\n' +
+              '\n**Commit**: `' + `${{ github.sha }}`.substring(0, 7) + '`' +
+              '\n**Message**: ' + `${{ github.event.head_commit.message }}`.split('\n')[0] +
+              '\n\n---\n\n### 📝 Review Results\n\n' +
               reviewOutput.substring(0, 5000) +
-              '\n```\n\n> [View full log](' + process.env.GITHUB_SERVER_URL + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId + ')';
+              (reviewOutput.length > 5000 ? '\n\n... (output truncated, view full log below)' : '') +
+              '\n\n---\n' +
+              '> 📊 [View full log](' + process.env.GITHUB_SERVER_URL + '/' + context.repo.owner + '/' + context.repo.repo + '/actions/runs/' + context.runId + ')';
             
             if (existingIssue) {
               await github.rest.issues.update({
@@ -65,7 +147,7 @@ jobs:
               const newIssue = await github.rest.issues.create({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                title: 'AI Code Review Report (Latest)',
+                title: '🤖 AI Code Review Report (Latest)',
                 body: issueBody
               });
               console.log('Created issue #' + newIssue.data.number);
