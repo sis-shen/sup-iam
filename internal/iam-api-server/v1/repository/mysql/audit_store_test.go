@@ -57,14 +57,15 @@ func TestAuditStore_GetPolicyAuditList_Success(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `policy_audits` ORDER BY id asc LIMIT ?")).
 		WithArgs(11).
 		WillReturnRows(rows)
+	// Count query
+	countRows := sqlmock.NewRows([]string{"count(*)"}).AddRow(2)
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT count(*) FROM `policy_audits`")).
+		WillReturnRows(countRows)
 
 	result, err := store.GetPolicyAuditList(context.Background(), repository.PageQuery{Limit: 10})
 	require.NoError(t, err)
 	require.Equal(t, 2, len(result.Items))
-	// Note: AuditStore.GetPolicyAuditList uses Count(&total) which returns *gorm.DB,
-	// and checks err == nil which is always false (gorm.DB is never nil).
-	// So Total is never set. This is a known limitation of the current implementation.
-	require.Equal(t, int64(0), result.Total)
+	require.Equal(t, int64(2), result.Total)
 }
 
 func TestAuditStore_GetPolicyAuditList_WithCursor(t *testing.T) {
@@ -155,11 +156,15 @@ func TestAuditStore_GetBindingAuditList_Success(t *testing.T) {
 	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM `binding_audits` ORDER BY id asc LIMIT ?")).
 		WithArgs(11).
 		WillReturnRows(rows)
+	// Count query
+	countRows := sqlmock.NewRows([]string{"count(*)"}).AddRow(2)
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT count(*) FROM `binding_audits`")).
+		WillReturnRows(countRows)
 
 	result, err := store.GetBindingAuditList(context.Background(), repository.PageQuery{Limit: 10})
 	require.NoError(t, err)
 	require.Equal(t, 2, len(result.Items))
-	require.Equal(t, int64(0), result.Total)
+	require.Equal(t, int64(2), result.Total)
 }
 
 func TestAuditStore_GetBindingAuditList_WithCursor(t *testing.T) {

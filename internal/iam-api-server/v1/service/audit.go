@@ -26,17 +26,25 @@ func NewAuditCase(repo repository.AuditRepository) *AuditCase {
 var _ (AuditCaseInterface) = (*AuditCase)(nil)
 
 func (ac *AuditCase) GetAuditBindingList(ctx context.Context, query repository.PageQuery) (repository.PageResult[*model.BindingAudit], error) {
-	return repository.PageResult[*model.BindingAudit]{}, nil
+	return ac.repo.GetBindingAuditList(ctx, query)
 }
 
 func (ac *AuditCase) GetAuditBindingByID(ctx context.Context, id string) (model.BindingAudit, error) {
-	return model.BindingAudit{}, nil
+	result, err := ac.repo.GetBindingAuditByID(ctx, id)
+	if err != nil {
+		return model.BindingAudit{}, err
+	}
+	return *result, nil
 }
 
 func (ac *AuditCase) GetAuditPolicyList(ctx context.Context, query repository.PageQuery) (repository.PageResult[*model.PolicyAudit], error) {
-	return repository.PageResult[*model.PolicyAudit]{}, nil
+	return ac.repo.GetPolicyAuditList(ctx, query)
 }
 
 func (ac *AuditCase) GetAuditPolicyByID(ctx context.Context, id string) (model.PolicyAudit, error) {
-	return model.PolicyAudit{}, nil
+	result, err := ac.repo.GetPolicyAuditByID(ctx, id)
+	if err != nil {
+		return model.PolicyAudit{}, err
+	}
+	return *result, nil
 }

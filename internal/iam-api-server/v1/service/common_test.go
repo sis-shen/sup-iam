@@ -129,7 +129,7 @@ func TestGetPageSize_Default(t *testing.T) {
 	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/users", nil)
 
 	pageSize := GetPageSize(c)
-	assert.Equal(t, int32(1), pageSize)
+	assert.Equal(t, int32(10), pageSize)
 }
 
 func TestGetPageSize_WithParam(t *testing.T) {
@@ -147,7 +147,7 @@ func TestGetPageSize_InvalidParam(t *testing.T) {
 	c.Request = httptest.NewRequest(http.MethodGet, "/api/v1/users?page_size=abc", nil)
 
 	pageSize := GetPageSize(c)
-	assert.Equal(t, int32(1), pageSize, "invalid page_size should fallback to 1")
+	assert.Equal(t, int32(10), pageSize, "invalid page_size should fallback to 10")
 }
 
 func TestValidatePasswordStrength_Valid(t *testing.T) {

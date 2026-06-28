@@ -101,7 +101,8 @@ func TestUserAPI_GetByID_MissingID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestUserAPI(ctrl)
+	api, mockUserCase := newTestUserAPI(ctrl)
+	mockUserCase.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -154,7 +155,8 @@ func TestUserAPI_Delete_MissingID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestUserAPI(ctrl)
+	api, mockUserCase := newTestUserAPI(ctrl)
+	mockUserCase.EXPECT().DeleteUser(gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -196,7 +198,9 @@ func TestUserAPI_Create_InvalidBody(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestUserAPI(ctrl)
+	api, mockUserCase := newTestUserAPI(ctrl)
+	mockUserCase.EXPECT().HashPassword(gomock.Any()).Times(0)
+	mockUserCase.EXPECT().CreateUser(gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -239,7 +243,9 @@ func TestUserAPI_Update_MissingID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestUserAPI(ctrl)
+	api, mockUserCase := newTestUserAPI(ctrl)
+	mockUserCase.EXPECT().UpdateUser(gomock.Any(), gomock.Any()).Times(0)
+	mockUserCase.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -254,7 +260,9 @@ func TestUserAPI_Update_InvalidBody(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestUserAPI(ctrl)
+	api, mockUserCase := newTestUserAPI(ctrl)
+	mockUserCase.EXPECT().UpdateUser(gomock.Any(), gomock.Any()).Times(0)
+	mockUserCase.EXPECT().GetUserByID(gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

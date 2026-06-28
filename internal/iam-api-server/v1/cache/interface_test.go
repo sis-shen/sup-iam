@@ -2,7 +2,6 @@ package cache
 
 import (
 	"context"
-	"errors"
 	"testing"
 	"time"
 
@@ -63,37 +62,40 @@ func TestRedisTokenBlackList_IsBlacklisted_False(t *testing.T) {
 }
 
 func TestRedisTokenBlackList_Add_ClientError(t *testing.T) {
-	// 使用已关闭的客户端模拟 Redis 错误
-	client := redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})
+	// 使用 miniredis 但立即关闭，获得一个 fast-fail 地址
+	mr, err := miniredis.Run()
+	require.NoError(t, err)
+	mr.Close()
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	bl := NewRedisTokenBlackList(client, 10*time.Minute)
 
-	// 快速超时避免测试太久
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
+	// 使用已取消的 context，保证立即返回错误，不依赖网络超时
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
 
-	err := bl.Add(ctx, "fail-token")
+	err = bl.Add(ctx, "fail-token")
 	assert.Error(t, err)
 }
 
 func TestRedisTokenBlackList_IsBlacklisted_ClientError(t *testing.T) {
-	client := redis.NewClient(&redis.Options{Addr: "127.0.0.1:1"})
+	mr, err := miniredis.Run()
+	require.NoError(t, err)
+	mr.Close()
+	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
 	bl := NewRedisTokenBlackList(client, 10*time.Minute)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
-	defer cancel()
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
 
 	blacklisted, err := bl.IsBlacklisted(ctx, "fail-token")
 	assert.Error(t, err)
 	assert.False(t, blacklisted)
 }
 
-// TestRedisTokenBlackList_ImplementsInterface 编译时接口断言
+// TestRedisTokenBlackList_ImplementsInterface ensures compile-time interface check
 func TestRedisTokenBlackList_ImplementsInterface(t *testing.T) {
 	client := newTestRedisClient(t)
 	bl := NewRedisTokenBlackList(client, 5*time.Minute)
 
 	var _ TokenBlackListInterface = bl
-
-	// 验证 Add 和 IsBlacklisted 的签名（编译时检查）
-	_ = errors.New // 确保 errors 包被使用（用于类型一致性）
 }

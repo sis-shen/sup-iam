@@ -23,5 +23,4 @@ func TestNewTestGinContext(t *testing.T) {
 func TestNewTestJWTManager(t *testing.T) {
 	mgr := NewTestJWTManager()
 	assert.NotNil(t, mgr)
-	assert.NotNil(t, mgr)
 }

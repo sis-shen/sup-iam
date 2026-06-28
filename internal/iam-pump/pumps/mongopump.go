@@ -262,6 +262,7 @@ func (m *MongoPump) mongoDialInfo(conf BaseMongoConf) (*options.ClientOptions, e
 }
 
 // extractDatabaseName extracts the database name from a MongoDB connection URI.
+// Falls back to the authSource query parameter if no database is in the path.
 func extractDatabaseName(uri string) string {
 	prefix := "mongodb://"
 	if strings.HasPrefix(uri, "mongodb+srv://") {
@@ -290,6 +291,16 @@ func extractDatabaseName(uri string) string {
 		dbName := rest[slashIndex+1:]
 		if dbName != "" {
 			return dbName
+		}
+	}
+
+	// Fallback: try to extract from authSource query parameter
+	if qIndex := strings.Index(uri, "?"); qIndex != -1 {
+		for _, param := range strings.Split(uri[qIndex+1:], "&") {
+			kv := strings.SplitN(param, "=", 2)
+			if len(kv) == 2 && kv[0] == "authSource" {
+				return kv[1]
+			}
 		}
 	}
 

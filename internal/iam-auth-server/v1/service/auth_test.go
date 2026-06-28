@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"sync"
 	"testing"
@@ -65,6 +66,7 @@ func TestMain(m *testing.M) {
 		BufferItems: 64,
 	})
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to initialize test cache: %v\n", err)
 		os.Exit(1)
 	}
 

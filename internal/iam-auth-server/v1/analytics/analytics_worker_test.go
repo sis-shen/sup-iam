@@ -26,6 +26,8 @@ type mockStore struct {
 	getExpireCalled    bool
 	getExpireReturn    time.Duration
 	getExpireReturnErr error
+	// flushNotify is signaled on each AppendToSetPipelined call for test synchronization
+	flushNotify chan struct{}
 }
 
 func (m *mockStore) Connect() error {
@@ -42,6 +44,11 @@ func (m *mockStore) AppendToSetPipelined(key string, data [][]byte) error {
 	m.appendKey = key
 	m.appendData = append(m.appendData, data...)
 	m.mu.Unlock()
+	// Notify test that a flush occurred (non-blocking)
+	select {
+	case m.flushNotify <- struct{}{}:
+	default:
+	}
 	if m.appendReturnErr {
 		return assert.AnError
 	}
@@ -70,6 +77,16 @@ func (m *mockStore) WithStopChan(stopChan <-chan struct{}) storage.AnalyticsStor
 func (m *mockStore) WithExpireTime(d time.Duration) storage.AnalyticsStore {
 	m.expireTime = d
 	return m
+}
+
+// waitForFlush waits for a flush notification or times out.
+func waitForFlush(t *testing.T, store *mockStore, timeout time.Duration) {
+	t.Helper()
+	select {
+	case <-store.flushNotify:
+	case <-time.After(timeout):
+		t.Fatal("timeout waiting for flush")
+	}
 }
 
 func TestNewAnalytics(t *testing.T) {
@@ -102,6 +119,7 @@ func TestNewAnalytics_WorkerBufferSizeMinimum(t *testing.T) {
 
 func TestAnalytics_Start_Stop(t *testing.T) {
 	store := &mockStore{}
+	store.flushNotify = make(chan struct{}, 10)
 	opts := &AnalyticsOptions{
 		PoolSize:         2,
 		RecordBufferSize: 10,
@@ -174,6 +192,7 @@ func TestAnalytics_RecordHit_AfterStop(t *testing.T) {
 
 func TestAnalytics_RecordHit_FullBuffer(t *testing.T) {
 	store := &mockStore{}
+	store.flushNotify = make(chan struct{}, 10)
 	opts := &AnalyticsOptions{
 		PoolSize:         1,
 		RecordBufferSize: 2,
@@ -191,13 +210,14 @@ func TestAnalytics_RecordHit_FullBuffer(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Allow some time for worker to process
-	time.Sleep(50 * time.Millisecond)
+	waitForFlush(t, store, time.Second)
 
 	a.Stop()
 }
 
 func TestAnalytics_WorkerFlushesOnStop(t *testing.T) {
 	store := &mockStore{}
+	store.flushNotify = make(chan struct{}, 10)
 	opts := &AnalyticsOptions{
 		PoolSize:         1,
 		RecordBufferSize: 100,
@@ -214,18 +234,17 @@ func TestAnalytics_WorkerFlushesOnStop(t *testing.T) {
 	}
 
 	// Stop triggers flush
-	time.Sleep(20 * time.Millisecond)
 	a.Stop()
-
-	// Data should have been flushed to the store via stopChan
+	// Stop waits for all workers to flush, so data should be flushed now
 	store.mu.Lock()
 	appendCount := len(store.appendData)
 	store.mu.Unlock()
-	assert.GreaterOrEqual(t, appendCount, 0, "Data may or may not have been flushed depending on timing")
+	assert.Greater(t, appendCount, 0, "Data should have been flushed on stop")
 }
 
 func TestAnalytics_FlushOnBufferFull(t *testing.T) {
 	store := &mockStore{}
+	store.flushNotify = make(chan struct{}, 10)
 	opts := &AnalyticsOptions{
 		PoolSize:         1,
 		RecordBufferSize: 100,
@@ -241,20 +260,21 @@ func TestAnalytics_FlushOnBufferFull(t *testing.T) {
 
 	// Send 2 records - should trigger flush
 	_ = a.RecordHit(&AnalyticsRecord{Username: "user1", Resource: "res1"})
+	waitForFlush(t, store, time.Second)
 	_ = a.RecordHit(&AnalyticsRecord{Username: "user2", Resource: "res2"})
-
-	time.Sleep(50 * time.Millisecond)
+	waitForFlush(t, store, time.Second)
 
 	a.Stop()
 
 	store.mu.Lock()
-	appendCount := atomic.LoadInt32(&store.appendCalled)
+	appendCount := store.appendCalled
 	store.mu.Unlock()
-	assert.GreaterOrEqual(t, appendCount, int32(1), "Should have flushed at least once")
+	assert.Greater(t, int(appendCount), 0, "Should have flushed at least once")
 }
 
 func TestAnalytics_RecordHit_NilRecord(t *testing.T) {
 	store := &mockStore{}
+	store.flushNotify = make(chan struct{}, 10)
 	opts := &AnalyticsOptions{
 		PoolSize:         1,
 		RecordBufferSize: 10,
@@ -269,12 +289,12 @@ func TestAnalytics_RecordHit_NilRecord(t *testing.T) {
 	err = a.RecordHit(nil)
 	assert.NoError(t, err)
 
-	time.Sleep(50 * time.Millisecond)
 	a.Stop()
 }
 
 func TestAnalytics_MultipleWorkers(t *testing.T) {
 	store := &mockStore{}
+	store.flushNotify = make(chan struct{}, 10)
 	opts := &AnalyticsOptions{
 		PoolSize:         4,
 		RecordBufferSize: 100,
@@ -294,6 +314,5 @@ func TestAnalytics_MultipleWorkers(t *testing.T) {
 		})
 	}
 
-	time.Sleep(200 * time.Millisecond)
 	a.Stop()
 }

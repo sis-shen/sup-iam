@@ -36,9 +36,9 @@ func GetPage(c *gin.Context) int32 {
 }
 
 func GetPageSize(c *gin.Context) int32 {
-	pageSize, err := strconv.Atoi(c.DefaultQuery("page_size", "1"))
+	pageSize, err := strconv.Atoi(c.DefaultQuery("page_size", "10"))
 	if err != nil {
-		pageSize = 1
+		pageSize = 10
 	}
 
 	return int32(pageSize)

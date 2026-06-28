@@ -63,8 +63,8 @@ func TestGetAddrs_WithAddrsAndZeroPortAppendsDefault(t *testing.T) {
 		Port:  0,
 	}
 	addrs := getAddrs(o)
-	assert.Equal(t, []string{"cluster-1:6379", "127.0.0.1:6379"}, addrs,
-		"defaultRedisAddress is appended as fallback when Port is 0")
+	// When Addrs is set, use it directly; do not append default address
+	assert.Equal(t, []string{"cluster-1:6379"}, addrs)
 }
 
 func TestGetAddrs_WithOnlyHostNoPortNoAddrs(t *testing.T) {

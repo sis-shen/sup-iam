@@ -119,7 +119,8 @@ func TestPolicyAPI_GetByID_MissingID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestPolicyAPI(ctrl)
+	api, mockPolicyCase := newTestPolicyAPI(ctrl)
+	mockPolicyCase.EXPECT().GetPolicyByID(gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -152,7 +153,8 @@ func TestPolicyAPI_Delete_MissingID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestPolicyAPI(ctrl)
+	api, mockPolicyCase := newTestPolicyAPI(ctrl)
+	mockPolicyCase.EXPECT().DeletePolicy(gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -186,7 +188,8 @@ func TestPolicyAPI_Create_InvalidBody(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestPolicyAPI(ctrl)
+	api, mockPolicyCase := newTestPolicyAPI(ctrl)
+	mockPolicyCase.EXPECT().CreatePolicy(gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -251,7 +254,9 @@ func TestPolicyAPI_Update_MissingID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestPolicyAPI(ctrl)
+	api, mockPolicyCase := newTestPolicyAPI(ctrl)
+	mockPolicyCase.EXPECT().UpdatePolicy(gomock.Any(), gomock.Any()).Times(0)
+	mockPolicyCase.EXPECT().GetPolicyByID(gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -266,7 +271,9 @@ func TestPolicyAPI_Update_InvalidBody(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestPolicyAPI(ctrl)
+	api, mockPolicyCase := newTestPolicyAPI(ctrl)
+	mockPolicyCase.EXPECT().UpdatePolicy(gomock.Any(), gomock.Any()).Times(0)
+	mockPolicyCase.EXPECT().GetPolicyByID(gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -330,7 +337,8 @@ func TestPolicyAPI_GetSecrets_MissingID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestPolicyAPI(ctrl)
+	api, mockPolicyCase := newTestPolicyAPI(ctrl)
+	mockPolicyCase.EXPECT().GetPolicyBindingSecretList(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

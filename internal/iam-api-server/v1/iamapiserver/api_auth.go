@@ -66,7 +66,7 @@ func (api *AuthAPI) ApiV1AuthLoginPost(c *gin.Context) {
 			Error:            LoginError,
 			ErrorDescription: err.Error(),
 		}
-		c.JSON(200, errRsp)
+		c.JSON(401, errRsp)
 		return
 	}
 

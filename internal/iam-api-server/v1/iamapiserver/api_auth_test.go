@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/sis-shen/sup-iam/internal/iam-api-server/v1/model"
 	servicemock "github.com/sis-shen/sup-iam/internal/iam-api-server/v1/service/mock"
+	"github.com/sis-shen/sup-iam/internal/pkg/middleware"
 	"github.com/sis-shen/sup-iam/internal/pkg/testutil"
 	"github.com/stretchr/testify/assert"
 	"go.uber.org/mock/gomock"
@@ -59,7 +60,8 @@ func TestAuthAPI_Login_InvalidBody(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _, _ := newTestAuthAPI(ctrl)
+	api, mockAuthCase, _ := newTestAuthAPI(ctrl)
+	mockAuthCase.EXPECT().Login(gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -92,8 +94,8 @@ func TestAuthAPI_Login_ServiceError(t *testing.T) {
 	c.Request.Header.Set("Content-Type", "application/json")
 
 	api.ApiV1AuthLoginPost(c)
-	// LoginError 返回 200 但 body 中带 error 字段
-	assert.Equal(t, http.StatusOK, w.Code)
+	// Login 失败应返回 401 Unauthorized
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 
 	var errResp ErrorResponse
 	json.Unmarshal(w.Body.Bytes(), &errResp)
@@ -366,4 +368,93 @@ func TestAuthAPI_Refresh_NoToken(t *testing.T) {
 
 	api.ApiV1AuthRefreshPost(c)
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
+}
+
+// TestAuthAPI_Me_ThroughMiddleware 测试完整链路：JWT Middleware → handler
+// 确保 middleware 正确解析 token 并设置 UserIDKey，handler 能正确读取
+func TestAuthAPI_Me_ThroughMiddleware(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	api, _, mockUserCase := newTestAuthAPI(ctrl)
+	jwtMgr := testutil.NewTestJWTManager()
+
+	token, _, err := jwtMgr.GenerateToken("1", "testuser")
+	assert.NoError(t, err)
+
+	phone := "13800138000"
+	email := "test@example.com"
+	mockUserCase.EXPECT().
+		GetUserByID(gomock.Any(), "1").
+		Return(&model.User{
+			ID:       1,
+			Username: "testuser",
+			Nickname: "Test",
+			Phone:    &phone,
+			Email:    &email,
+			IsAdmin:  1,
+			IsEnable: 1,
+		}, nil)
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	jwtMw := middleware.JWTAuthMiddleware(&jwtMgr, []string{"/api/v1/auth/login", "/api/v1/auth/register"})
+	router.Use(jwtMw)
+	router.GET("/api/v1/auth/me", api.ApiV1AuthMeGet)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var resp MeResponse
+	json.Unmarshal(w.Body.Bytes(), &resp)
+	assert.Equal(t, int64(1), resp.Id)
+	assert.Equal(t, "testuser", resp.Username)
+	assert.Equal(t, "Test", resp.Nickname)
+}
+
+// TestAuthAPI_Me_ThroughMiddleware_NoToken 验证无 token 时 middleware 拦截请求
+func TestAuthAPI_Me_ThroughMiddleware_NoToken(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	api, _, _ := newTestAuthAPI(ctrl)
+	jwtMgr := testutil.NewTestJWTManager()
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	jwtMw := middleware.JWTAuthMiddleware(&jwtMgr, []string{"/api/v1/auth/login", "/api/v1/auth/register"})
+	router.Use(jwtMw)
+	router.GET("/api/v1/auth/me", api.ApiV1AuthMeGet)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
+}
+
+// TestAuthAPI_Me_ThroughMiddleware_InvalidToken 验证无效 token 时 middleware 拦截请求
+func TestAuthAPI_Me_ThroughMiddleware_InvalidToken(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	api, _, _ := newTestAuthAPI(ctrl)
+	jwtMgr := testutil.NewTestJWTManager()
+
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	jwtMw := middleware.JWTAuthMiddleware(&jwtMgr, []string{"/api/v1/auth/login", "/api/v1/auth/register"})
+	router.Use(jwtMw)
+	router.GET("/api/v1/auth/me", api.ApiV1AuthMeGet)
+
+	w := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/me", nil)
+	req.Header.Set("Authorization", "Bearer invalid-token")
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusUnauthorized, w.Code)
 }

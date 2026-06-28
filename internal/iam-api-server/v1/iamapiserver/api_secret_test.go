@@ -92,7 +92,8 @@ func TestSecretAPI_GetByID_MissingID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestSecretAPI(ctrl)
+	api, mockSecretCase := newTestSecretAPI(ctrl)
+	mockSecretCase.EXPECT().GetSecretByID(gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -125,7 +126,8 @@ func TestSecretAPI_Delete_MissingID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestSecretAPI(ctrl)
+	api, mockSecretCase := newTestSecretAPI(ctrl)
+	mockSecretCase.EXPECT().DeleteSecret(gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -228,7 +230,8 @@ func TestSecretAPI_Rotate_MissingID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestSecretAPI(ctrl)
+	api, mockSecretCase := newTestSecretAPI(ctrl)
+	mockSecretCase.EXPECT().RotateSecret(gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -269,7 +272,8 @@ func TestSecretAPI_Update_MissingID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestSecretAPI(ctrl)
+	api, mockSecretCase := newTestSecretAPI(ctrl)
+	mockSecretCase.EXPECT().UpdateSecret(gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -312,7 +316,8 @@ func TestSecretAPI_GetPolicies_MissingID(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	defer ctrl.Finish()
 
-	api, _ := newTestSecretAPI(ctrl)
+	api, mockSecretCase := newTestSecretAPI(ctrl)
+	mockSecretCase.EXPECT().GetSecretBindingPolicy(gomock.Any(), gomock.Any(), gomock.Any()).Times(0)
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)

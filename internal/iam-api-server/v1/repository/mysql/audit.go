@@ -68,7 +68,7 @@ func (as *AuditStore) GetPolicyAuditList(ctx context.Context, query repository.P
 	var total int64
 	if err := as.db.WithContext(ctx).
 		Model(&model.PolicyAudit{}).
-		Count(&total); err == nil {
+		Count(&total).Error; err == nil {
 		result.Total = total
 	}
 
@@ -124,7 +124,7 @@ func (as *AuditStore) GetBindingAuditList(ctx context.Context, query repository.
 	var total int64
 	if err := as.db.WithContext(ctx).
 		Model(&model.BindingAudit{}).
-		Count(&total); err == nil {
+		Count(&total).Error; err == nil {
 		result.Total = total
 	}
 

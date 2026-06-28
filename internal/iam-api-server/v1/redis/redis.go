@@ -48,15 +48,9 @@ func Init(config interface{}) (*RedisClusterStorage, error) {
 func getAddrs(o *genericoptions.RedisOptions) (addrs []string) {
 	if len(o.Addrs) > 0 {
 		addrs = o.Addrs
-	}
-
-	if len(o.Addrs) == 0 && o.Port != 0 {
+	} else if o.Port != 0 {
 		addr := o.Host + ":" + strconv.FormatInt(int64(o.Port), 10)
-		addrs = append(addrs, addr)
-	}
-
-	if len(o.Addrs) > 0 && o.Port == 0 {
-		addrs = append(addrs, defaultRedisAddress)
+		addrs = []string{addr}
 	}
 
 	return addrs
