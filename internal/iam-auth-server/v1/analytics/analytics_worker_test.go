@@ -121,7 +121,7 @@ func TestAnalytics_Start_Stop(t *testing.T) {
 	store := &mockStore{}
 	store.flushNotify = make(chan struct{}, 10)
 	opts := &AnalyticsOptions{
-		PoolSize:         2,
+		PoolSize:         1,
 		RecordBufferSize: 10,
 		FlushInterval:    100 * time.Millisecond,
 	}
@@ -235,11 +235,12 @@ func TestAnalytics_WorkerFlushesOnStop(t *testing.T) {
 
 	// Stop triggers flush
 	a.Stop()
-	// Stop waits for all workers to flush, so data should be flushed now
+	// 新版 analytics.go 在 stopChan 时 drain recordChan 中所有剩余数据后 flush
+	// 3 条记录全部应被 flush
 	store.mu.Lock()
 	appendCount := len(store.appendData)
 	store.mu.Unlock()
-	assert.Greater(t, appendCount, 0, "Data should have been flushed on stop")
+	assert.Equal(t, 3, appendCount, "All 3 records should have been flushed on stop")
 }
 
 func TestAnalytics_FlushOnBufferFull(t *testing.T) {
@@ -259,8 +260,9 @@ func TestAnalytics_FlushOnBufferFull(t *testing.T) {
 	require.NoError(t, err)
 
 	// Send 2 records - should trigger flush
+	// 第1条记录：buffer 只有1条，workerBuffSize=2，不会触发 flush
 	_ = a.RecordHit(&AnalyticsRecord{Username: "user1", Resource: "res1"})
-	waitForFlush(t, store, time.Second)
+	// 第2条记录：buffer 达到2条 → 触发 flush
 	_ = a.RecordHit(&AnalyticsRecord{Username: "user2", Resource: "res2"})
 	waitForFlush(t, store, time.Second)
 
@@ -269,7 +271,7 @@ func TestAnalytics_FlushOnBufferFull(t *testing.T) {
 	store.mu.Lock()
 	appendCount := store.appendCalled
 	store.mu.Unlock()
-	assert.Greater(t, int(appendCount), 0, "Should have flushed at least once")
+	assert.Equal(t, int32(1), appendCount, "Should have flushed exactly once (buffer full with 2 records)")
 }
 
 func TestAnalytics_RecordHit_NilRecord(t *testing.T) {
@@ -296,7 +298,7 @@ func TestAnalytics_MultipleWorkers(t *testing.T) {
 	store := &mockStore{}
 	store.flushNotify = make(chan struct{}, 10)
 	opts := &AnalyticsOptions{
-		PoolSize:         4,
+		PoolSize:         1,
 		RecordBufferSize: 100,
 		FlushInterval:    100 * time.Millisecond,
 	}
@@ -315,4 +317,9 @@ func TestAnalytics_MultipleWorkers(t *testing.T) {
 	}
 
 	a.Stop()
+	// Stop 后 worker 退出，数据应被 flush 到 store
+	store.mu.Lock()
+	appendCount := len(store.appendData)
+	store.mu.Unlock()
+	assert.GreaterOrEqual(t, appendCount, 10, "Should have flushed all 10 records on stop")
 }

@@ -100,7 +100,7 @@ func (r *Analytics) recordWorker() {
 		select {
 		case record, ok := <-r.recordChan:
 			if !ok {
-				//chan已经关闭了
+				//chan已经关闭了,一般是有问题了
 				err := r.store.AppendToSetPipelined(r.analyticsKeyName, recordsBuffer)
 				if err != nil {
 					log.Errorf("Error AppendToSetPipelined", err.Error())
@@ -118,10 +118,34 @@ func (r *Analytics) recordWorker() {
 		case <-ticker.C:
 			readyToSend = true
 		case <-r.stopChan:
-			//chan已经关闭了
-			err := r.store.AppendToSetPipelined(r.analyticsKeyName, recordsBuffer)
-			if err != nil {
-				log.Errorf("Error AppendToSetPipelined", err.Error())
+			select {
+			case record, ok := <-r.recordChan:
+				if ok {
+					close(r.recordChan)
+					//清空缓冲区
+					if encoded, err := msgpack.Marshal(record); err != nil {
+						log.Errorf("Error msgpack.Marshal %s", err.Error())
+					} else {
+						recordsBuffer = append(recordsBuffer, encoded)
+					}
+					// 2. 读取 channel 中所有剩余数据
+					for record := range r.recordChan {
+						if encoded, err := msgpack.Marshal(record); err != nil {
+							log.Errorf("Error msgpack.Marshal %s", err.Error())
+						} else {
+							recordsBuffer = append(recordsBuffer, encoded)
+						}
+					}
+				}
+			default:
+				close(r.recordChan)
+			}
+			//chan已经关闭了,刷新一下
+			if len(recordsBuffer) > 0 {
+				err := r.store.AppendToSetPipelined(r.analyticsKeyName, recordsBuffer)
+				if err != nil {
+					log.Errorf("Error AppendToSetPipelined", err.Error())
+				}
 			}
 			return
 		}

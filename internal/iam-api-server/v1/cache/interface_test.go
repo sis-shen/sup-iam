@@ -62,11 +62,12 @@ func TestRedisTokenBlackList_IsBlacklisted_False(t *testing.T) {
 }
 
 func TestRedisTokenBlackList_Add_ClientError(t *testing.T) {
-	// 使用 miniredis 但立即关闭，获得一个 fast-fail 地址
+	// 先保存 Addr，再 Close — Close 后 Addr() 会 panic (miniredis 内部 server 被置 nil)
 	mr, err := miniredis.Run()
 	require.NoError(t, err)
+	addr := mr.Addr()
 	mr.Close()
-	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	client := redis.NewClient(&redis.Options{Addr: addr})
 	bl := NewRedisTokenBlackList(client, 10*time.Minute)
 
 	// 使用已取消的 context，保证立即返回错误，不依赖网络超时
@@ -80,8 +81,9 @@ func TestRedisTokenBlackList_Add_ClientError(t *testing.T) {
 func TestRedisTokenBlackList_IsBlacklisted_ClientError(t *testing.T) {
 	mr, err := miniredis.Run()
 	require.NoError(t, err)
+	addr := mr.Addr()
 	mr.Close()
-	client := redis.NewClient(&redis.Options{Addr: mr.Addr()})
+	client := redis.NewClient(&redis.Options{Addr: addr})
 	bl := NewRedisTokenBlackList(client, 10*time.Minute)
 
 	ctx, cancel := context.WithCancel(context.Background())
