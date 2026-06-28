@@ -1,6 +1,6 @@
 # ========== 变量定义 ==========
-export DOCKER_REGISTRY ?= ghcr.io/sis-shen
-export DOCKER_NAMESPACE ?= supdriver
+export DOCKER_REGISTRY ?= ghcr.io
+export DOCKER_NAMESPACE ?= sis-shen
 export VERSION ?= 1.0.0
 
 # Go 版本要求
@@ -160,6 +160,9 @@ helm-iam-install: ## 安装 IAM Helm Chart
 	@helm install iam-dev ./deploy/helm/iam -n iam
 
 .PHONY: helm-iam-upgrade
+helm-iam-upgrade: ## 升级 IAM Helm Chart
+	@echo "升级 IAM Helm Chart..."
+	@helm upgrade iam-dev ./deploy/helm/iam -n iam
 
 # ======== k8s mysql ========
 .PHONY: helm-mysql-cm
