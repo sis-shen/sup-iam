@@ -85,7 +85,7 @@ func (api *AuthVerifyAPI) VerifyRequest(c *gin.Context) {
 		return
 	}
 
-	ok, matched, err := api.service.Authorize(req.Username, secret.AccessKey, req.Path, req.Method)
+	ok, matched, err := api.service.Authorize(secret.ID, req.Username, req.Path, req.Method)
 	if err != nil {
 		logger.Warnf("Authorize err: %v", err)
 		errRsp := ErrorResponse{
