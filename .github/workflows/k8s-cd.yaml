@@ -1,0 +1,66 @@
+# .github/workflows/k8s-cd.yaml
+name: Kubernetes CD # 给工作流起一个明确的名字
+
+# 关键：通过 workflow_run 事件监听 CI 工作流
+on:
+  workflow_run:
+    workflows: ["Docker CI"] # 必须与 CI 工作流的 name 完全一致
+    types:
+      - completed # 监听完成事件
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # 条件判断：只有当被监听的工作流（Docker CI）运行成功时，才执行此 job
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+
+      - name: Install SSH client
+        run: |
+            sudo apt-get update
+            sudo apt-get install -y openssh-client
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed
+          chmod 600 ~/.ssh/id_ed
+
+      - name: Deploy to Kubernetes
+        run: |
+          SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          ssh ${SSH_OPTS} -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            # 进入项目目录
+            cd ${{ secrets.SSH_LOCAL_REPO_PATH }}
+
+                # 使用 Helm  重新部署
+            helm uninstall -n iam iam-dev
+            make helm-iam-install
+          EOF
+
+
+      # 1. 拉取代码 (通常需要部署清单)
+    #   - name: Checkout code
+    #     uses: actions/checkout@v4
+
+      # 2. 配置 Kubernetes 集群访问权限 (kubectl)
+      #    你需要将集群的 kubeconfig 内容添加到 GitHub Secrets 中，例如 KUBE_CONFIG[citation:3]
+    #   - name: Set up kubectl
+    #     uses: azure/setup-kubectl@v3
+    #     with:
+    #       version: 'latest'
+
+    #   - name: Configure kubectl
+    #     run: |
+    #       mkdir -p $HOME/.kube
+    #       echo "${{ secrets.KUBE_CONFIG }}" > $HOME/.kube/config
+    #       chmod 600 $HOME/.kube/config
+
+    #   # 3. 执行部署 (这里提供两种常见模式)
+    #   #    方案 A: 直接更新 Deployment 镜像版本 (简单直接)[citation:3]
+    #   - name: Deploy to Kubernetes
+    #     run: |
+    #       kubectl set image deployment/YOUR_DEPLOYMENT_NAME YOUR_CONTAINER_NAME=${{ secrets.REGISTRY_URL }}/YOUR_IMAGE:latest
+    #       kubectl rollout status deployment/YOUR_DEPLOYMENT_NAME
+
+\
