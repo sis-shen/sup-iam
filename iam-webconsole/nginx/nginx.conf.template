@@ -79,7 +79,7 @@ http {
 
         # API reverse proxy to backend
         location /api/ {
-            proxy_pass http://$backend_upstream;
+            proxy_pass $backend_upstream;
 
             # Proxy headers
             proxy_set_header Host                  $host;
