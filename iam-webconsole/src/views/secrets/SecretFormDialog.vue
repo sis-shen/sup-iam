@@ -19,7 +19,7 @@
           v-model="form.expires"
           type="datetime"
           placeholder="选择过期时间（可选）"
-          value-format="YYYY-MM-DDTHH:mm:ssZ"
+          value-format="x"
           style="width: 100%"
           :disabled="noExpiry"
         />
@@ -83,7 +83,8 @@ function handleOpen() {
   if (props.mode === 'edit' && props.secret) {
     form.description = props.secret.description || ''
     form.username = props.secret.username || ''
-    form.expires = props.secret.expires || null
+    // API returns expires as seconds (int64), date-picker needs milliseconds
+    form.expires = props.secret.expires ? props.secret.expires * 1000 : null
     noExpiry.value = !form.expires
   } else {
     resetForm()
@@ -100,10 +101,12 @@ async function handleSubmit() {
 
   submitting.value = true
   try {
+    // expires: date-picker returns ms timestamp, API expects seconds (int64)
+    const expiresTs = noExpiry.value ? undefined : Math.floor(form.expires / 1000)
     const payload = {
       description: form.description || undefined,
-      expires: noExpiry.value ? undefined : form.expires,
-      username: form.username,
+      expires: expiresTs,
+      user_name: form.username,
     }
 
     if (props.mode === 'create') {
@@ -114,7 +117,7 @@ async function handleSubmit() {
     } else {
       await updateSecret(props.secret.id, {
         description: form.description || undefined,
-        expires: noExpiry.value ? undefined : form.expires,
+        expires: expiresTs,
       })
       ElMessage.success('密钥更新成功')
       emit('update:visible', false)

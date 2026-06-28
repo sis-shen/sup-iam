@@ -8,11 +8,6 @@
     </div>
 
     <div class="content-card">
-      <div class="search-bar">
-        <el-input v-model="searchQuery" placeholder="搜索用户名/邮箱" clearable @clear="fetchUsers" @keyup.enter="fetchUsers" />
-        <el-button type="primary" @click="fetchUsers">搜索</el-button>
-      </div>
-
       <el-table :data="users" v-loading="loading" border stripe style="width: 100%">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="username" label="用户名" min-width="120" />
@@ -76,7 +71,6 @@ const users = ref([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = ref(20)
-const searchQuery = ref('')
 
 const dialogVisible = ref(false)
 const dialogMode = ref('create')
@@ -94,12 +88,14 @@ async function fetchUsers() {
   loading.value = true
   try {
     const params = { page: page.value, page_size: pageSize.value }
-    if (searchQuery.value.trim()) {
-      params.keyword = searchQuery.value.trim()
-    }
     const res = await getUsers(params)
     users.value = res.items || []
     total.value = res.total || 0
+    // If current page is empty and not on page 1, go back one page
+    if (users.value.length === 0 && page.value > 1) {
+      page.value--
+      return fetchUsers()
+    }
   } catch {
     // Error handled by interceptor
   } finally {

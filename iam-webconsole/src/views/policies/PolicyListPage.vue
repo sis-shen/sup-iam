@@ -76,6 +76,11 @@ async function fetchPolicies() {
     const res = await getPolicies({ page: page.value, page_size: pageSize.value })
     policies.value = res.items || []
     total.value = res.total || 0
+    // If current page is empty and not on page 1, go back one page
+    if (policies.value.length === 0 && page.value > 1) {
+      page.value--
+      return fetchPolicies()
+    }
   } catch {
     // Handled by interceptor
   } finally {

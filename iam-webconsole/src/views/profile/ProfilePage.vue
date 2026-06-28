@@ -63,14 +63,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import { getMe, changePassword } from '@/api/auth'
+import { changePassword } from '@/api/auth'
+import { useUserStore } from '@/stores/user'
 import { formatDateTime } from '@/utils/format'
 
 const formRef = ref(null)
 const changing = ref(false)
-const userInfo = ref(null)
+const userStore = useUserStore()
 
 const passwordForm = reactive({
   old_password: '',
@@ -99,24 +100,18 @@ const passwordRules = {
   ],
 }
 
-const userFields = computed(() => [
-  { label: '用户ID', value: userInfo.value?.id ?? '-' },
-  { label: '用户名', value: userInfo.value?.username ?? '-' },
-  { label: '昵称', value: userInfo.value?.nickname || '-' },
-  { label: '邮箱', value: userInfo.value?.email || '-' },
-  { label: '手机号', value: userInfo.value?.phone || '-' },
-  { label: '角色', value: userInfo.value?.is_admin ? '管理员' : '普通用户' },
-  { label: '状态', value: userInfo.value?.is_enable ? '启用' : '禁用' },
-  { label: '登录时间', value: formatDateTime(userInfo.value?.logged_at) },
-])
-
-onMounted(async () => {
-  try {
-    const res = await getMe()
-    userInfo.value = res
-  } catch {
-    // Ignore
-  }
+const userFields = computed(() => {
+  const info = userStore.info
+  return [
+    { label: '用户ID', value: info?.id ?? '-' },
+    { label: '用户名', value: info?.username ?? '-' },
+    { label: '昵称', value: info?.nickname || '-' },
+    { label: '邮箱', value: info?.email || '-' },
+    { label: '手机号', value: info?.phone || '-' },
+    { label: '角色', value: info?.is_admin ? '管理员' : '普通用户' },
+    { label: '状态', value: info?.is_enable ? '启用' : '禁用' },
+    { label: '登录时间', value: formatDateTime(info?.logged_at) },
+  ]
 })
 
 async function handleChangePassword() {

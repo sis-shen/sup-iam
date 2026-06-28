@@ -5,7 +5,7 @@
     </div>
     <div class="content-card">
       <div class="welcome-section">
-        <h3>欢迎回来，{{ userInfo?.username || '用户' }}</h3>
+        <h3>欢迎回来，{{ userStore.username || '用户' }}</h3>
         <p class="welcome-text">身份与访问管理系统 (IAM) 管理控制台</p>
       </div>
       <el-row :gutter="20" class="stats-row">
@@ -32,7 +32,7 @@
               <el-button type="warning" @click="$router.push('/bindings')">
                 <el-icon><Link /></el-icon> 管理绑定
               </el-button>
-              <el-button v-if="userInfo?.is_admin" @click="$router.push('/users')">
+              <el-button v-if="userStore.isAdmin" @click="$router.push('/users')">
                 <el-icon><User /></el-icon> 管理用户
               </el-button>
             </el-space>
@@ -46,14 +46,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getMe } from '@/api/auth'
+import { useUserStore } from '@/stores/user'
 import { getUsers } from '@/api/users'
 import { getSecrets } from '@/api/secrets'
 import { getPolicies } from '@/api/policies'
 import { getBindings } from '@/api/bindings'
 
 const router = useRouter()
-const userInfo = ref(null)
+const userStore = useUserStore()
 
 const stats = ref([
   { label: '用户总数', count: '-' },
@@ -63,12 +63,7 @@ const stats = ref([
 ])
 
 onMounted(async () => {
-  try {
-    const me = await getMe()
-    userInfo.value = me
-  } catch {
-    // Ignore
-  }
+  await userStore.fetchUserInfo()
 
   // Fetch stats (using page_size=1 to get total count)
   try {

@@ -176,9 +176,8 @@ async function handleLogin() {
     setTokens(res.access_token, res.refresh_token, res.expires_in)
     ElMessage.success('登录成功')
     router.push('/dashboard')
-  } catch (err) {
+  } catch {
     // Error message already shown by interceptor
-    console.error('Login failed:', err)
   } finally {
     loading.value = false
   }

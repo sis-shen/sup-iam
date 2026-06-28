@@ -9,17 +9,9 @@
 
     <div class="content-card">
       <el-table :data="bindings" v-loading="loading" border stripe style="width: 100%">
-        <el-table-column prop="id" label="ID" width="70" />
-        <el-table-column prop="secret_id" label="密钥 ID" width="80" />
-        <el-table-column label="Access Key" min-width="160">
-          <template #default="{ row }">
-            <code style="background: #f5f7fa; padding: 2px 6px; border-radius: 3px; font-size: 12px;">
-              {{ row.secret_access_key ? maskKey(row.secret_access_key) : row.secret_id }}
-            </code>
-          </template>
-        </el-table-column>
-        <el-table-column prop="policy_id" label="策略 ID" width="80" />
-        <el-table-column prop="policy_name" label="策略名称" min-width="140" />
+        <el-table-column prop="binding_id" label="ID" width="80" />
+        <el-table-column prop="secret_id" label="密钥 ID" width="90" />
+        <el-table-column prop="policy_id" label="策略 ID" width="90" />
         <el-table-column prop="username" label="用户名" width="120" />
         <el-table-column prop="created_at" label="创建时间" width="170" :formatter="dateFormatter" />
         <el-table-column label="操作" width="120" fixed="right">
@@ -53,7 +45,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getBindings, deleteBinding } from '@/api/bindings'
-import { formatDateTime, maskKey } from '@/utils/format'
+import { formatDateTime } from '@/utils/format'
 import BindingFormDialog from './BindingFormDialog.vue'
 
 const loading = ref(false)
@@ -78,6 +70,11 @@ async function fetchBindings() {
     const res = await getBindings({ page: page.value, page_size: pageSize.value })
     bindings.value = res.items || []
     total.value = res.total || 0
+    // If current page is empty and not on page 1, go back one page
+    if (bindings.value.length === 0 && page.value > 1) {
+      page.value--
+      return fetchBindings()
+    }
   } catch {
     // Handled by interceptor
   } finally {
@@ -96,7 +93,7 @@ async function handleDelete(row) {
       '确认删除',
       { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
     )
-    await deleteBinding(row.id)
+    await deleteBinding(row.binding_id)
     ElMessage.success('删除成功')
     fetchBindings()
   } catch {

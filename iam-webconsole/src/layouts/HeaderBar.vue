@@ -16,7 +16,7 @@
       <el-dropdown trigger="click" @command="handleCommand">
         <span class="user-info">
           <el-avatar :size="32" icon="UserFilled" />
-          <span class="username">{{ userInfo?.username || '用户' }}</span>
+          <span class="username">{{ userStore.username || '用户' }}</span>
           <el-icon><ArrowDown /></el-icon>
         </span>
         <template #dropdown>
@@ -35,10 +35,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { getMe, logout as logoutApi } from '@/api/auth'
+import { logout as logoutApi } from '@/api/auth'
 import { clearTokens } from '@/utils/auth'
+import { useUserStore } from '@/stores/user'
 
 defineProps({
   collapsed: {
@@ -51,18 +52,12 @@ defineEmits(['toggleSidebar'])
 
 const route = useRoute()
 const router = useRouter()
-
-const userInfo = ref(null)
+const userStore = useUserStore()
 
 const currentTitle = computed(() => route.meta?.title || '')
 
-onMounted(async () => {
-  try {
-    const res = await getMe()
-    userInfo.value = res
-  } catch {
-    // Will be redirected by auth guard
-  }
+onMounted(() => {
+  userStore.fetchUserInfo()
 })
 
 function handleCommand(command) {
@@ -79,6 +74,7 @@ async function handleLogout() {
   } catch {
     // Ignore logout API errors
   }
+  userStore.clear()
   clearTokens()
   router.push('/login')
 }

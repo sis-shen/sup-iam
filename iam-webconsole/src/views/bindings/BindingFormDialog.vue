@@ -12,9 +12,6 @@
         <el-select
           v-model="form.secret_id"
           filterable
-          remote
-          :remote-method="searchSecrets"
-          :loading="loadingSecrets"
           placeholder="搜索并选择密钥"
           style="width: 100%"
         >
@@ -30,9 +27,6 @@
         <el-select
           v-model="form.policy_id"
           filterable
-          remote
-          :remote-method="searchPolicies"
-          :loading="loadingPolicies"
           placeholder="搜索并选择策略"
           style="width: 100%"
         >
@@ -86,53 +80,22 @@ const rules = {
 
 const secretOptions = ref([])
 const policyOptions = ref([])
-const loadingSecrets = ref(false)
-const loadingPolicies = ref(false)
 
 async function handleOpen() {
   form.secret_id = null
   form.policy_id = null
   form.username = ''
-  // Load initial options
-  searchSecrets('')
-  searchPolicies('')
-}
-
-async function searchSecrets(query) {
-  loadingSecrets.value = true
+  // Load options for select dropdowns
   try {
-    const res = await getSecrets({ page: 1, page_size: 50 })
-    let items = res.items || []
-    if (query) {
-      items = items.filter(s =>
-        s.access_key.toLowerCase().includes(query.toLowerCase()) ||
-        (s.username && s.username.toLowerCase().includes(query.toLowerCase()))
-      )
-    }
-    secretOptions.value = items
+    const [secretsRes, policiesRes] = await Promise.all([
+      getSecrets({ page: 1, page_size: 100 }),
+      getPolicies({ page: 1, page_size: 100 }),
+    ])
+    secretOptions.value = secretsRes.items || []
+    policyOptions.value = policiesRes.items || []
   } catch {
     secretOptions.value = []
-  } finally {
-    loadingSecrets.value = false
-  }
-}
-
-async function searchPolicies(query) {
-  loadingPolicies.value = true
-  try {
-    const res = await getPolicies({ page: 1, page_size: 50 })
-    let items = res.items || []
-    if (query) {
-      items = items.filter(p =>
-        p.name.toLowerCase().includes(query.toLowerCase()) ||
-        (p.username && p.username.toLowerCase().includes(query.toLowerCase()))
-      )
-    }
-    policyOptions.value = items
-  } catch {
     policyOptions.value = []
-  } finally {
-    loadingPolicies.value = false
   }
 }
 

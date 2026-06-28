@@ -17,7 +17,7 @@
         </el-table-column>
         <el-table-column prop="description" label="描述" min-width="160" />
         <el-table-column prop="username" label="用户名" width="120" />
-        <el-table-column prop="expires" label="过期时间" width="170" :formatter="dateFormatter" />
+        <el-table-column prop="expires" label="过期时间" width="170" :formatter="expiresFormatter" />
         <el-table-column prop="created_at" label="创建时间" width="170" :formatter="dateFormatter" />
         <el-table-column label="操作" width="260" fixed="right">
           <template #default="{ row }">
@@ -99,12 +99,23 @@ function dateFormatter(row, column, cellValue) {
   return formatDateTime(cellValue)
 }
 
+function expiresFormatter(row, column, cellValue) {
+  if (!cellValue) return '永不过期'
+  // API returns expires as seconds (int64), Date constructor needs ms
+  return formatDateTime(cellValue * 1000)
+}
+
 async function fetchSecrets() {
   loading.value = true
   try {
     const res = await getSecrets({ page: page.value, page_size: pageSize.value })
     secrets.value = res.items || []
     total.value = res.total || 0
+    // If current page is empty and not on page 1, go back one page
+    if (secrets.value.length === 0 && page.value > 1) {
+      page.value--
+      return fetchSecrets()
+    }
   } catch {
     // Handled by interceptor
   } finally {
@@ -168,11 +179,25 @@ async function copySecretKey() {
   if (!secretKeyResult.value) return
   const text = `Access Key: ${secretKeyResult.value.access_key}\nSecret Key: ${secretKeyResult.value.secret_key}`
   try {
+    // Try modern clipboard API first
     await navigator.clipboard.writeText(text)
-    ElMessage.success('已复制到剪贴板')
   } catch {
-    ElMessage.warning('复制失败，请手动复制')
+    // Fallback for non-HTTPS / older browsers
+    try {
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    } catch {
+      ElMessage.warning('复制失败，请手动复制')
+      return
+    }
   }
+  ElMessage.success('已复制到剪贴板')
 }
 </script>
 

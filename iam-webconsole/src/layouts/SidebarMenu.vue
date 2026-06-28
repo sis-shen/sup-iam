@@ -34,6 +34,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
+import { useUserStore } from '@/stores/user'
 
 const props = defineProps({
   collapsed: {
@@ -43,26 +44,33 @@ const props = defineProps({
 })
 
 const route = useRoute()
+const userStore = useUserStore()
 
 const activeMenu = computed(() => route.path)
 
-const menuItems = [
-  { path: '/dashboard', title: '仪表盘', icon: 'Odometer' },
-  { path: '/users', title: '用户管理', icon: 'User' },
-  { path: '/secrets', title: 'AK/SK 管理', icon: 'Key' },
-  { path: '/policies', title: '策略管理', icon: 'Document' },
-  { path: '/bindings', title: '绑定关系', icon: 'Link' },
+const allMenuItems = [
+  { path: '/dashboard', title: '仪表盘', icon: 'Odometer', adminOnly: false },
+  { path: '/users', title: '用户管理', icon: 'User', adminOnly: true },
+  { path: '/secrets', title: 'AK/SK 管理', icon: 'Key', adminOnly: false },
+  { path: '/policies', title: '策略管理', icon: 'Document', adminOnly: false },
+  { path: '/bindings', title: '绑定关系', icon: 'Link', adminOnly: false },
   {
     path: '/audits',
     title: '审计日志',
     icon: 'List',
+    adminOnly: true,
     children: [
       { path: '/audits/policies', title: '策略审计' },
       { path: '/audits/bindings', title: '绑定审计' },
     ],
   },
-  { path: '/profile', title: '个人中心', icon: 'Setting' },
+  { path: '/profile', title: '个人中心', icon: 'Setting', adminOnly: false },
 ]
+
+const menuItems = computed(() => {
+  if (userStore.isAdmin) return allMenuItems
+  return allMenuItems.filter((item) => !item.adminOnly)
+})
 </script>
 
 <style scoped>

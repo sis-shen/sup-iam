@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { isAuthenticated } from '@/utils/auth'
+import { useUserStore } from '@/stores/user'
 
 const routes = [
   {
@@ -83,15 +84,31 @@ const router = createRouter({
   routes,
 })
 
-// Navigation guard for authentication
-router.beforeEach((to, from, next) => {
+// Navigation guard for authentication and admin routes
+router.beforeEach(async (to, from, next) => {
+  // Require authentication
   if (to.meta.requiresAuth && !isAuthenticated()) {
     next('/login')
-  } else if (to.path === '/login' && isAuthenticated()) {
-    next('/dashboard')
-  } else {
-    next()
+    return
   }
+
+  // Redirect to dashboard if already logged in
+  if (to.path === '/login' && isAuthenticated()) {
+    next('/dashboard')
+    return
+  }
+
+  // Check admin-only routes
+  if (to.meta.requiresAdmin) {
+    const userStore = useUserStore()
+    await userStore.fetchUserInfo()
+    if (!userStore.isAdmin) {
+      next('/dashboard')
+      return
+    }
+  }
+
+  next()
 })
 
 export default router
