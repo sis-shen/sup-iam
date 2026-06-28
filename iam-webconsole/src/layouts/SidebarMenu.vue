@@ -49,7 +49,7 @@ const userStore = useUserStore()
 const activeMenu = computed(() => route.path)
 
 const allMenuItems = [
-  { path: '/dashboard', title: '仪表盘', icon: 'Odometer', adminOnly: false },
+  { path: '/dashboard', title: '仪表盘', icon: 'Odometer', adminOnly: true },
   { path: '/users', title: '用户管理', icon: 'User', adminOnly: true },
   { path: '/secrets', title: 'AK/SK 管理', icon: 'Key', adminOnly: false },
   { path: '/policies', title: '策略管理', icon: 'Document', adminOnly: false },

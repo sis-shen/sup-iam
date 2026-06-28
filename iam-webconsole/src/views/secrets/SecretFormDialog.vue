@@ -18,14 +18,10 @@
         <el-date-picker
           v-model="form.expires"
           type="datetime"
-          placeholder="选择过期时间（可选）"
+          placeholder="选择过期时间"
           value-format="x"
           style="width: 100%"
-          :disabled="noExpiry"
         />
-      </el-form-item>
-      <el-form-item label="永不过期">
-        <el-switch v-model="noExpiry" />
       </el-form-item>
     </el-form>
 
@@ -53,7 +49,6 @@ const emit = defineEmits(['update:visible', 'success'])
 
 const formRef = ref(null)
 const submitting = ref(false)
-const noExpiry = ref(true)
 
 const form = reactive({
   description: '',
@@ -64,6 +59,7 @@ const form = reactive({
 const rules = {
   description: [{ max: 255, message: '描述不能超过255个字符', trigger: 'blur' }],
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  expires: [{ required: true, message: '请选择过期时间', trigger: 'change' }],
 }
 
 watch(() => props.visible, (val) => {
@@ -76,7 +72,6 @@ function resetForm() {
   form.description = ''
   form.username = ''
   form.expires = null
-  noExpiry.value = true
 }
 
 function handleOpen() {
@@ -85,7 +80,6 @@ function handleOpen() {
     form.username = props.secret.username || ''
     // API returns expires as seconds (int64), date-picker needs milliseconds
     form.expires = props.secret.expires ? props.secret.expires * 1000 : null
-    noExpiry.value = !form.expires
   } else {
     resetForm()
   }
@@ -102,22 +96,20 @@ async function handleSubmit() {
   submitting.value = true
   try {
     // expires: date-picker returns ms timestamp, API expects seconds (int64)
-    const expiresTs = noExpiry.value ? undefined : Math.floor(form.expires / 1000)
-    const payload = {
-      description: form.description || undefined,
-      expires: expiresTs,
-      user_name: form.username,
-    }
-
+    const expiresSec = Math.floor(form.expires / 1000)
     if (props.mode === 'create') {
-      const res = await createSecret(payload)
+      const res = await createSecret({
+        description: form.description || undefined,
+        expires: expiresSec,
+        user_name: form.username,
+      })
       ElMessage.success('密钥创建成功')
       emit('update:visible', false)
       emit('success', res)
     } else {
       await updateSecret(props.secret.id, {
         description: form.description || undefined,
-        expires: expiresTs,
+        expires: expiresSec,
       })
       ElMessage.success('密钥更新成功')
       emit('update:visible', false)

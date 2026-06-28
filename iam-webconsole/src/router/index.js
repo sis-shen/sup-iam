@@ -13,13 +13,13 @@ const routes = [
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),
     meta: { requiresAuth: true },
-    redirect: '/dashboard',
+    redirect: '/secrets',
     children: [
       {
         path: 'dashboard',
         name: 'Dashboard',
         component: () => import('@/views/dashboard/DashboardPage.vue'),
-        meta: { title: '仪表盘', icon: 'Odometer' },
+        meta: { title: '仪表盘', icon: 'Odometer', requiresAdmin: true },
       },
       {
         path: 'users',
@@ -92,9 +92,9 @@ router.beforeEach(async (to, from, next) => {
     return
   }
 
-  // Redirect to dashboard if already logged in
+  // Redirect to secrets if already logged in
   if (to.path === '/login' && isAuthenticated()) {
-    next('/dashboard')
+    next('/secrets')
     return
   }
 
@@ -103,7 +103,7 @@ router.beforeEach(async (to, from, next) => {
     const userStore = useUserStore()
     await userStore.fetchUserInfo()
     if (!userStore.isAdmin) {
-      next('/dashboard')
+      next('/secrets')
       return
     }
   }

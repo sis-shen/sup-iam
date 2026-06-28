@@ -84,10 +84,12 @@ request.interceptors.response.use(
       }
     }
 
-    // Display error message from API
+    // Display error message from API (skip silent "not found" errors)
     if (status !== 401 || !config._retry) {
       const msg = data?.error_description || data?.error || '请求失败'
-      ElMessage.error(msg)
+      if (msg !== 'repository: not found') {
+        ElMessage.error(msg)
+      }
     }
     return Promise.reject(error)
   }
