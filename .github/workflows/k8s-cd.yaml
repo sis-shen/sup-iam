@@ -62,5 +62,3 @@ jobs:
     #     run: |
     #       kubectl set image deployment/YOUR_DEPLOYMENT_NAME YOUR_CONTAINER_NAME=${{ secrets.REGISTRY_URL }}/YOUR_IMAGE:latest
     #       kubectl rollout status deployment/YOUR_DEPLOYMENT_NAME
-
-\
