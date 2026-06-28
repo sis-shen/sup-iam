@@ -14,26 +14,19 @@ jobs:
     # 条件判断：只有当被监听的工作流（Docker CI）运行成功时，才执行此 job
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
-
-      - name: Install SSH client
+      - name: Install SSH client and sshpass
         run: |
-            sudo apt-get update
-            sudo apt-get install -y openssh-client
-
-      - name: Setup SSH key
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed
-          chmod 600 ~/.ssh/id_ed
+          sudo apt-get update
+          sudo apt-get install -y openssh-client sshpass
 
       - name: Deploy to Kubernetes
         run: |
-          SSH_OPTS="-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-          ssh ${SSH_OPTS} -p ${{ secrets.SSH_PORT }} ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
-            # 进入项目目录
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -p ${{ secrets.SSH_PORT }} \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
             cd ${{ secrets.SSH_LOCAL_REPO_PATH }}
-
-                # 使用 Helm  重新部署
             helm uninstall -n iam iam-dev
             make helm-iam-install
           EOF
