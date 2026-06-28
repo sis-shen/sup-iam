@@ -65,7 +65,8 @@ func TestVerifyRequest_Success(t *testing.T) {
 	gomock.InOrder(
 		mockSvc.EXPECT().BuildCanonicalString("ak-001", "GET", "/api/resource", "hash123", "1700000000").Return(canonical),
 		mockSvc.EXPECT().VerifySecretKey("ak-001", canonical, "valid-sig").Return(true, &model.CachedSecret{ID: "100", SecretKey: "sk-001", AccessKey: "ak-001"}, nil),
-		mockSvc.EXPECT().Authorize("alice", "ak-001", "/api/resource", "GET").Return(true, []string{"10"}, nil),
+		// Handler 调用: Authorize(secret.ID, req.Username, req.Path, req.Method)
+		mockSvc.EXPECT().Authorize("100", "alice", "/api/resource", "GET").Return(true, []string{"10"}, nil),
 	)
 
 	w := httptest.NewRecorder()
@@ -205,7 +206,7 @@ func TestVerifyRequest_AuthorizeError(t *testing.T) {
 	gomock.InOrder(
 		mockSvc.EXPECT().BuildCanonicalString(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("canonical"),
 		mockSvc.EXPECT().VerifySecretKey(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, secret, nil),
-		mockSvc.EXPECT().Authorize("", "ak-001", "/api/resource", "GET").Return(false, nil, assert.AnError),
+		mockSvc.EXPECT().Authorize("100", "", "/api/resource", "GET").Return(false, nil, assert.AnError),
 	)
 
 	w := httptest.NewRecorder()
@@ -235,7 +236,7 @@ func TestVerifyRequest_Denied(t *testing.T) {
 	gomock.InOrder(
 		mockSvc.EXPECT().BuildCanonicalString(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return("canonical"),
 		mockSvc.EXPECT().VerifySecretKey(gomock.Any(), gomock.Any(), gomock.Any()).Return(true, secret, nil),
-		mockSvc.EXPECT().Authorize("", "ak-001", "/api/resource", "GET").Return(false, nil, nil),
+		mockSvc.EXPECT().Authorize("100", "", "/api/resource", "GET").Return(false, nil, nil),
 	)
 
 	w := httptest.NewRecorder()
