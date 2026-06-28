@@ -27,7 +27,7 @@ apiServer:
   name: iam-api-server
   secretName: iam-api-secret
   image:
-    repository: ghcr.io/sis-shen/supdriver/iam-api-server
+    repository: ghcr.io/sis-shen/iam-api-server
     tag: "latest"
     pullPolicy: Always
   containerPorts:
@@ -81,7 +81,7 @@ authzServer:
   name: iam-auth-server
   secretName: iam-auth-secret
   image:
-    repository: ghcr.io/sis-shen/supdriver/iam-auth-server
+    repository: ghcr.io/sis-shen/iam-auth-server
     tag: "latest"
     pullPolicy: Always
   containerPorts:
@@ -125,7 +125,7 @@ authzServer:
       cpu: "300m"
       memory: "256Mi"
     limits:
-      cpu: "500m"
+      cpu: "2048m"
       memory: "512Mi"
   configFileName: iam-auth-config
   configMapName: iam-config
@@ -134,7 +134,7 @@ iamPump:
   name: iam-pump
   secretName: iam-pump-secret
   image:
-    repository: ghcr.io/sis-shen/supdriver/iam-pump
+    repository: ghcr.io/sis-shen/iam-pump
     tag: "latest"
     pullPolicy: Always
   containerPorts:
