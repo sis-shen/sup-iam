@@ -74,6 +74,10 @@ func TestMain(m *testing.M) {
 		analytics.NewAnalyticsOptions(),
 		&mockAnalyticsStore{},
 	)
+	if err := testAnalytics.Start(); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to start test analytics: %v\n", err)
+		os.Exit(1)
+	}
 
 	os.Exit(m.Run())
 }
@@ -294,4 +298,91 @@ func TestAuthorize_NoPolicies(t *testing.T) {
 	require.Error(t, err)
 	require.False(t, ok)
 	require.Nil(t, matched)
+}
+
+// ============ Benchmarks ============
+
+// benchHelper sets up test data and returns a fresh AuthCase with pre-warmed pool.
+func benchHelper(policies [][]*cachedmodel.CachedPolicy) *AuthCase {
+	setTestPolicies(policies)
+	ac := newTestAuthCase()
+	for i := 0; i < 200; i++ {
+		ac.Authorize("1", "alice", "/api/resource", "GET")
+	}
+	return ac
+}
+
+func BenchmarkAuthorize_1Policy_Hit_Serial(b *testing.B) {
+	ac := benchHelper([][]*cachedmodel.CachedPolicy{{
+		{ID: "p1", SecretID: "1", Username: "alice", DSL: "[[\"alice\", \"/api/resource\", \"GET\"]]"},
+	}})
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ac.Authorize("1", "alice", "/api/resource", "GET")
+	}
+}
+
+func BenchmarkAuthorize_1Policy_Hit_Parallel(b *testing.B) {
+	ac := benchHelper([][]*cachedmodel.CachedPolicy{{
+		{ID: "p1", SecretID: "1", Username: "alice", DSL: "[[\"alice\", \"/api/resource\", \"GET\"]]"},
+	}})
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			ac.Authorize("1", "alice", "/api/resource", "GET")
+		}
+	})
+}
+
+func BenchmarkAuthorize_5Policies_MidHit_Parallel(b *testing.B) {
+	ac := benchHelper([][]*cachedmodel.CachedPolicy{{
+		{ID: "p1", SecretID: "1", Username: "bob", DSL: "[[\"bob\", \"/api/other\", \"POST\"]]"},
+		{ID: "p2", SecretID: "1", Username: "carol", DSL: "[[\"carol\", \"/api/v2/*\", \"PUT\"]]"},
+		{ID: "p3", SecretID: "1", Username: "alice", DSL: "[[\"alice\", \"/api/resource\", \"GET\"]]"},
+		{ID: "p4", SecretID: "1", Username: "dave", DSL: "[[\"dave\", \"/admin/*\", \"DELETE\"]]"},
+		{ID: "p5", SecretID: "1", Username: "eve", DSL: "[[\"eve\", \"/api/*\", \"*\"]]"},
+	}})
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			ac.Authorize("1", "alice", "/api/resource", "GET")
+		}
+	})
+}
+
+func BenchmarkAuthorize_5Policies_AllMiss_Parallel(b *testing.B) {
+	ac := benchHelper([][]*cachedmodel.CachedPolicy{{
+		{ID: "p1", SecretID: "1", Username: "bob", DSL: "[[\"bob\", \"/api/other\", \"POST\"]]"},
+		{ID: "p2", SecretID: "1", Username: "carol", DSL: "[[\"carol\", \"/api/v2/*\", \"PUT\"]]"},
+		{ID: "p3", SecretID: "1", Username: "dave", DSL: "[[\"dave\", \"/admin/*\", \"DELETE\"]]"},
+		{ID: "p4", SecretID: "1", Username: "eve", DSL: "[[\"eve\", \"/api/*\", \"*\"]]"},
+		{ID: "p5", SecretID: "1", Username: "frank", DSL: "[[\"frank\", \"/secret/*\", \"GET\"]]"},
+	}})
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			ac.Authorize("1", "alice", "/api/resource", "GET")
+		}
+	})
+}
+
+func BenchmarkAuthorize_3Rules_Parallel(b *testing.B) {
+	ac := benchHelper([][]*cachedmodel.CachedPolicy{{
+		{ID: "p1", SecretID: "1", Username: "alice", DSL: "[[\"alice\", \"/api/orders\", \"POST\"],[\"alice\", \"/api/orders/*\", \"GET\"],[\"alice\", \"/api/resource\", \"GET\"]]"},
+	}})
+	b.ResetTimer()
+	b.RunParallel(func(pb *testing.PB) {
+		for pb.Next() {
+			ac.Authorize("1", "alice", "/api/resource", "GET")
+		}
+	})
+}
+
+func BenchmarkAuthorize_CacheMiss(b *testing.B) {
+	setTestPolicies(nil)
+	ac := newTestAuthCase()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ac.Authorize("not-found", "alice", "/api/resource", "GET")
+	}
 }
