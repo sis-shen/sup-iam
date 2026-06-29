@@ -30,6 +30,7 @@ type Analytics struct {
 	bufferFlushInterval   time.Duration
 	stopChan              chan struct{}
 	poolWg                sync.WaitGroup
+	onceClose             sync.Once
 	enable                bool
 	enableDetailRecording bool
 	analyticsKeyName      string
@@ -58,9 +59,10 @@ func (r *Analytics) RecordHit(record *AnalyticsRecord) error {
 	case <-r.stopChan:
 		return errors.New("analytics stopped")
 	default:
+		r.recordChan <- record
+		return nil
 	}
-	r.recordChan <- record
-	return nil
+
 }
 
 func (r *Analytics) Start() error {
@@ -80,6 +82,7 @@ func (r *Analytics) Start() error {
 }
 
 func (r *Analytics) Stop() {
+	close(r.recordChan)
 	if r.stopChan == nil {
 		return
 	}
@@ -100,46 +103,34 @@ func (r *Analytics) recordWorker() {
 		select {
 		case record, ok := <-r.recordChan:
 			if !ok {
-				//chan已经关闭了,一般是有问题了
-				err := r.store.AppendToSetPipelined(r.analyticsKeyName, recordsBuffer)
-				if err != nil {
-					log.Errorf("Error AppendToSetPipelined", err.Error())
+				//chan已经关闭了,刷新一下
+				if len(recordsBuffer) > 0 {
+					err := r.store.AppendToSetPipelined(r.analyticsKeyName, recordsBuffer)
+					if err != nil {
+						log.Errorf("Error AppendToSetPipelined", err.Error())
+					}
 				}
 				return
 			}
-
 			if encoded, err := msgpack.Marshal(record); err != nil {
 				log.Errorf("Error msgpack.Marshal %s", err.Error())
 			} else {
 				recordsBuffer = append(recordsBuffer, encoded)
 			}
-
 			readyToSend = uint64(len(recordsBuffer)) == r.workerBuffSize
 		case <-ticker.C:
 			readyToSend = true
 		case <-r.stopChan:
-			select {
-			case record, ok := <-r.recordChan:
-				if ok {
-					close(r.recordChan)
-					//清空缓冲区
+			r.onceClose.Do(func() {
+				// 2. 读取 channel 中所有剩余数据
+				for record := range r.recordChan {
 					if encoded, err := msgpack.Marshal(record); err != nil {
 						log.Errorf("Error msgpack.Marshal %s", err.Error())
 					} else {
 						recordsBuffer = append(recordsBuffer, encoded)
 					}
-					// 2. 读取 channel 中所有剩余数据
-					for record := range r.recordChan {
-						if encoded, err := msgpack.Marshal(record); err != nil {
-							log.Errorf("Error msgpack.Marshal %s", err.Error())
-						} else {
-							recordsBuffer = append(recordsBuffer, encoded)
-						}
-					}
 				}
-			default:
-				close(r.recordChan)
-			}
+			})
 			//chan已经关闭了,刷新一下
 			if len(recordsBuffer) > 0 {
 				err := r.store.AppendToSetPipelined(r.analyticsKeyName, recordsBuffer)
@@ -156,8 +147,9 @@ func (r *Analytics) recordWorker() {
 			lastFlush = time.Now()
 			if err != nil {
 				log.Errorf("Error AppendToSetPipelined", err.Error())
+			} else {
+				recordsBuffer = recordsBuffer[:0]
 			}
-			recordsBuffer = recordsBuffer[:0]
 		}
 
 	}
