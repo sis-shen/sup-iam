@@ -28,21 +28,14 @@ type AuthCase struct {
 	cache        *cache.Cache
 }
 
-var glbModel casbinmodel.Model
-var once sync.Once
-
 func NewAuthCase(ch *cache.Cache, keys keys.KeysInterface, analytics *analytics.Analytics) *AuthCase {
-	once.Do(func() {
-		m, err := casbinmodel.NewModelFromString(CurrenCasbinModelString)
-		if err != nil {
-			panic(err)
-		}
-		glbModel = m
-	})
-
 	pool := &sync.Pool{
 		New: func() interface{} {
-			e, err := casbin.NewEnforcer(glbModel)
+			m, err := casbinmodel.NewModelFromString(CurrenCasbinModelString)
+			if err != nil {
+				panic(err)
+			}
+			e, err := casbin.NewEnforcer(m)
 			if err != nil {
 				//不应该发生
 				panic(err)
