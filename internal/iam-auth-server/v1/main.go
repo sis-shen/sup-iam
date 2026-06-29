@@ -6,6 +6,8 @@ import (
 	"google.golang.org/grpc/backoff"
 	"time"
 
+	_ "net/http/pprof"
+
 	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/analytics"
 	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/config"
 	server "github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/go"
@@ -85,6 +87,10 @@ func main() {
 	} else {
 		gin.SetMode(gin.DebugMode)
 	}
+
+	go func() error {
+		return http.ListenAndServe("0.0.0.0:6060", nil) // 独立端口
+	}()
 
 	//====== 2. 加载组件
 	logger := log.New(conf.Log)
