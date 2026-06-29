@@ -142,7 +142,7 @@ func (r *Analytics) recordWorker() {
 		}
 
 		//+低流量保护
-		if len(recordsBuffer) > 0 && (readyToSend || time.Since(lastFlush) > r.bufferFlushInterval) {
+		if len(recordsBuffer) > 0 && (readyToSend || time.Since(lastFlush) > r.bufferFlushInterval || time.Since(lastFlush) > recordsBufferForcedFlushInterval) {
 			err := r.store.AppendToSetPipelined(r.analyticsKeyName, recordsBuffer)
 			lastFlush = time.Now()
 			if err != nil {
