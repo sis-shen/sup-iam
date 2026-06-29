@@ -30,7 +30,8 @@ type Route struct {
 
 // NewRouter returns a new router.
 func NewRouter(handleFunctions ApiHandleFunctions, jwtMiddleware gin.HandlerFunc) *gin.Engine {
-	e := gin.Default()
+	e := gin.New()
+	e.Use(gin.Recovery())
 	if jwtMiddleware != nil {
 		e.Use(jwtMiddleware)
 	}
