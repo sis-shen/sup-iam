@@ -49,7 +49,7 @@ func createPumpServer(o *options.Options) (*pumpServer, error) {
 		options:        o,
 		purgeDelay:     o.PurgeInterval,
 		omitDetail:     o.OmitDetailRecoding,
-		mutex:          rs.NewMutex("iam-pump", redsync.WithExpiry(10*time.Minute)),
+		mutex:          rs.NewMutex("iam-pump", redsync.WithExpiry(30*time.Second)),
 		analyticsStore: &redis.RedisClusterStorageManager{},
 		mapPumpConfig:  o.Pumps,
 	}
