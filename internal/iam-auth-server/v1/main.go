@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc/backoff"
+	"time"
 
 	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/analytics"
 	"github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/config"
@@ -48,6 +50,8 @@ type ShutdownResources struct {
 }
 
 var shutdownRes ShutdownResources
+
+const startDelay time.Duration = time.Minute * 2
 
 func main() {
 	var showVersion bool
@@ -116,6 +120,9 @@ func main() {
 			level)
 	}
 
+	logger.Infof("开始休眠，等待api server 启动,预计睡眠: %f 分钟", startDelay.Minutes())
+	time.Sleep(startDelay)
+	logger.Infof("停止休眠")
 	conn, err := newGrpcConn(conf.Grpc, logger)
 	if err != nil {
 		logger.Errorf("fail to create grpc conn: %v", err)
@@ -269,11 +276,39 @@ func newGrpcConn(conf config.GrpcConfig, logger log.Logger) (*grpc.ClientConn, e
 
 		return conn, nil
 	} else {
-		conn, err := grpc.NewClient(fmt.Sprintf("%s:%d", conf.Host, conf.Port),
+		// 配置重试选项
+		retryPolicy := `{
+        "methodConfig": [{
+            "name": [{"service": ""}],
+            "retryPolicy": {
+                "MaxAttempts": 5,
+                "InitialBackoff": "1s",
+                "MaxBackoff": "30s",
+                "BackoffMultiplier": 2.0,
+                "RetryableStatusCodes": ["UNAVAILABLE", "DEADLINE_EXCEEDED", "INTERNAL"]
+            }
+        }]
+    }`
+
+		conn, err := grpc.NewClient(
+			fmt.Sprintf("%s:%d", conf.Host, conf.Port),
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
+			grpc.WithDefaultServiceConfig(retryPolicy),
 			grpc.WithDefaultCallOptions(
 				grpc.UseCompressor(gzip.Name),
-				grpc.MaxCallRecvMsgSize(conf.MaxCallRecvMsgSize)))
+				grpc.MaxCallRecvMsgSize(conf.MaxCallRecvMsgSize),
+			),
+			// 连接参数配置 - 控制连接建立的重试
+			grpc.WithConnectParams(grpc.ConnectParams{
+				Backoff: backoff.Config{
+					BaseDelay:  1 * time.Second,
+					Multiplier: 1.6,
+					Jitter:     0.2,
+					MaxDelay:   120 * time.Second,
+				},
+				MinConnectTimeout: 5 * time.Second,
+			}),
+		)
 		if err != nil {
 			logger.Fatalf("Fail to connect grpc server: %v", err.Error())
 			return nil, err
