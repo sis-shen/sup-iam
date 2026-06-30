@@ -58,8 +58,10 @@ func (r *Analytics) RecordHit(record *AnalyticsRecord) error {
 	select {
 	case <-r.stopChan:
 		return errors.New("analytics stopped")
+	case r.recordChan <- record:
+		return nil
 	default:
-		r.recordChan <- record
+		log.Warnf("analytics record is full, dropping record")
 		return nil
 	}
 
