@@ -2,8 +2,7 @@ package iampump
 
 import (
 	"context"
-	"github.com/go-redsync/redsync/v4"
-	redsyncredis "github.com/go-redsync/redsync/v4/redis/goredis/v9"
+	goredis "github.com/redis/go-redis/v9"
 	"github.com/sis-shen/sup-iam/internal/pkg/log"
 	"sync"
 
@@ -11,7 +10,7 @@ import (
 	"github.com/sis-shen/sup-iam/internal/iam-pump/options"
 	"github.com/sis-shen/sup-iam/internal/iam-pump/pumps"
 	"github.com/sis-shen/sup-iam/internal/iam-pump/store"
-	"github.com/sis-shen/sup-iam/internal/iam-pump/store/redis"
+	storeredis "github.com/sis-shen/sup-iam/internal/iam-pump/store/redis"
 	"github.com/vmihailenco/msgpack/v5"
 
 	"time"
@@ -23,33 +22,29 @@ type pumpServer struct {
 	options        *options.Options
 	purgeDelay     time.Duration
 	omitDetail     bool
-	mutex          *redsync.Mutex
 	analyticsStore storage.AnalyticStoreInterface
 	mapPumpConfig  map[string]options.PumpOptions
+	redisClient    goredis.UniversalClient
 }
-
-// preparedGenericAPIServer is a private wrapper that enforces a call of PrepareRun() before Run can be invoked.
 
 type preparedPumpServer struct {
 	*pumpServer
 }
 
 func createPumpServer(o *options.Options) (*pumpServer, error) {
-	analyticsStore := &redis.RedisClusterStorageManager{}
+	analyticsStore := &storeredis.RedisClusterStorageManager{}
 	if err := analyticsStore.Init(o.RedisOptions); err != nil {
 		return nil, err
 	}
 
-	//直接拿现成的单例
-	rs := redsync.New(redsyncredis.NewPool(redis.NewRedisClusterPool(false, *o.RedisOptions)))
 	server := &pumpServer{
 		options:        o,
 		purgeDelay:     o.PurgeInterval,
 		omitDetail:     o.OmitDetailRecoding,
-		mutex:          rs.NewMutex("iam-pump", redsync.WithExpiry(30*time.Second)),
 		analyticsStore: analyticsStore,
 		mapPumpConfig:  o.Pumps,
 	}
+	server.redisClient = storeredis.NewRedisClusterPool(false, *o.RedisOptions)
 
 	return server, nil
 }
@@ -74,14 +69,19 @@ func (p preparedPumpServer) Run(stopChan <-chan struct{}) error {
 }
 
 func (p *pumpServer) pump() {
-	//获取租期
-	if err := p.mutex.Lock(); err != nil {
-		log.Warnf("there is already an iam-pump instance running: %s", err)
+	// 直接使用 ClusterClient 的 SetNX（经过集群路由层，正确处理 MOVED）
+	locked, err := p.redisClient.SetNX(context.Background(), "iam-pump", "1", 30*time.Second).Result()
+	if err != nil {
+		log.Warnf("redis lock error: %s", err)
+		return
+	}
+	if !locked {
+		log.Info("there is already an iam-pump instance running")
 		return
 	}
 
 	defer func() {
-		if _, err := p.mutex.Unlock(); err != nil {
+		if _, err := p.redisClient.Del(context.Background(), "iam-pump").Result(); err != nil {
 			log.Errorf("failed to unlock: %v", err)
 		}
 	}()
