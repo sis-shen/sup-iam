@@ -50,7 +50,7 @@ func getAddrs(o *genericoptions.RedisOptions) (addrs []string) {
 	return addrs
 }
 
-func newRedisClusterPool(forceReconnect bool, conf genericoptions.RedisOptions) redis.UniversalClient {
+func NewRedisClusterPool(forceReconnect bool, conf genericoptions.RedisOptions) redis.UniversalClient {
 	mtx.Lock()
 	defer mtx.Unlock()
 	if !forceReconnect && redisClusterSingleton != nil {
@@ -126,7 +126,7 @@ func (r *RedisClusterStorageManager) Init(conf interface{}) error {
 func (r *RedisClusterStorageManager) Connect() error {
 	if redisClusterSingleton == nil {
 		log.Debug("Connecting to Redis")
-		r.db = newRedisClusterPool(false, r.Config)
+		r.db = NewRedisClusterPool(false, r.Config)
 		return nil
 	}
 
@@ -169,7 +169,7 @@ func (r *RedisClusterStorageManager) ensureConnection() error {
 		}
 
 		// 尝试连接
-		r.db = newRedisClusterPool(true, r.Config)
+		r.db = NewRedisClusterPool(true, r.Config)
 		if r.db != nil {
 
 			if _, pingErr := r.db.Ping(context.Background()).Result(); pingErr == nil {

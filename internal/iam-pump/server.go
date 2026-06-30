@@ -2,10 +2,8 @@ package iampump
 
 import (
 	"context"
-	"fmt"
 	"github.com/go-redsync/redsync/v4"
 	redsyncredis "github.com/go-redsync/redsync/v4/redis/goredis/v9"
-	goredis "github.com/redis/go-redis/v9"
 	"github.com/sis-shen/sup-iam/internal/pkg/log"
 	"sync"
 
@@ -37,26 +35,22 @@ type preparedPumpServer struct {
 }
 
 func createPumpServer(o *options.Options) (*pumpServer, error) {
-	// use the same redis database with authorization log history
-	client := goredis.NewClient(&goredis.Options{
-		Addr:     fmt.Sprintf("%s:%d", o.RedisOptions.Host, o.RedisOptions.Port),
-		Username: o.RedisOptions.Username,
-		Password: o.RedisOptions.Password,
-	})
+	analyticsStore := &redis.RedisClusterStorageManager{}
+	if err := analyticsStore.Init(o.RedisOptions); err != nil {
+		return nil, err
+	}
 
-	rs := redsync.New(redsyncredis.NewPool(client))
+	//直接拿现成的单例
+	rs := redsync.New(redsyncredis.NewPool(redis.NewRedisClusterPool(false, *o.RedisOptions)))
 	server := &pumpServer{
 		options:        o,
 		purgeDelay:     o.PurgeInterval,
 		omitDetail:     o.OmitDetailRecoding,
 		mutex:          rs.NewMutex("iam-pump", redsync.WithExpiry(30*time.Second)),
-		analyticsStore: &redis.RedisClusterStorageManager{},
+		analyticsStore: analyticsStore,
 		mapPumpConfig:  o.Pumps,
 	}
 
-	if err := server.analyticsStore.Init(o.RedisOptions); err != nil {
-		return nil, err
-	}
 	return server, nil
 }
 
@@ -82,7 +76,7 @@ func (p preparedPumpServer) Run(stopChan <-chan struct{}) error {
 func (p *pumpServer) pump() {
 	//获取租期
 	if err := p.mutex.Lock(); err != nil {
-		log.Info("there is already an iam-pump instance running")
+		log.Warnf("there is already an iam-pump instance running: %s", err)
 		return
 	}
 
