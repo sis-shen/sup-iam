@@ -1,6 +1,8 @@
-import { defineConfig } from 'vite'
+﻿import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
+
+const mockTarget = process.env.IAM_MOCK === 'true' ? 'http://localhost:3001' : 'http://localhost:8888'
 
 export default defineConfig({
   plugins: [vue()],
@@ -13,7 +15,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8888',
+        target: mockTarget,
         changeOrigin: true,
       },
     },
