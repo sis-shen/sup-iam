@@ -213,7 +213,8 @@ func TestAuthorize_MatchedPolicy(t *testing.T) {
 	ok, matched, err := ac.Authorize("1", "alice", "/api/resource", "GET")
 	require.NoError(t, err)
 	require.True(t, ok)
-	require.Equal(t, []string{"100"}, matched)
+	// 新版 Authorize 将所有策略合并到一个 enforcer 中执行，不再逐策略追踪匹配
+	require.Empty(t, matched)
 }
 
 func TestAuthorize_NoMatchingPolicy(t *testing.T) {
@@ -257,7 +258,7 @@ func TestAuthorize_FirstMatch(t *testing.T) {
 	ok, matched, err := ac.Authorize("3", "alice", "/api/resource", "GET")
 	require.NoError(t, err)
 	require.True(t, ok)
-	require.Equal(t, []string{"2"}, matched)
+	require.Empty(t, matched)
 }
 
 func TestAuthorize_CacheMiss(t *testing.T) {

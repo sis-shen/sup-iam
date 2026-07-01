@@ -102,16 +102,15 @@ func (ac *AuthCase) Authorize(secretID string, username string, path string, met
 				return false, nil, err
 			}
 			allDecodes = append(allDecodes, decodes...)
+		}
 
-			ok, err := e.AddPolicies(allDecodes)
+		ok, err := e.AddPolicies(allDecodes)
 
-			if err != nil {
-				return false, nil, err
-			}
-			if !ok {
-				return false, nil, errors.New("failed to add policy")
-			}
-
+		if err != nil {
+			return false, nil, err
+		}
+		if !ok {
+			return false, nil, errors.New("failed to add policy")
 		}
 
 		ac.enforcerCache.Set(secretID, e)

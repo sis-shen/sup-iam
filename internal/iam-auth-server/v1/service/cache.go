@@ -36,6 +36,9 @@ func (c *EnforcerCache) Get(secretID string) (*casbin.Enforcer, bool) {
 	c.mtx.RLock()
 	defer c.mtx.RUnlock()
 	e, ok := c.cache[secretID]
+	if !ok {
+		return nil, false
+	}
 	e.LastTime.Store(time.Now())
 	return e.e, ok
 }
