@@ -69,6 +69,8 @@ func (c *EnforcerCache) clearLoop() {
 
 			c.mtx.Lock()
 			for _, k := range toDelete {
+				e := c.cache[k].e
+				e.ClearPolicy()
 				c.pool.Put(c.cache[k].e)
 				delete(c.cache, k)
 			}

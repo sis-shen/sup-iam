@@ -91,7 +91,6 @@ func (ac *AuthCase) Authorize(secretID string, username string, path string, met
 	if !ok {
 		e = ac.enforcerPool.Get().(*casbin.Enforcer)
 		e.ClearPolicy()
-		defer e.ClearPolicy()
 		var allDecodes [][]string
 
 		for _, policy := range policies {
