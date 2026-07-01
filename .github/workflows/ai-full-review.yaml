@@ -1,7 +1,6 @@
-name: AI Code Review
+name: AI Code FULL Review
 
 on:
-  push:
   workflow_dispatch:
 
 jobs:
