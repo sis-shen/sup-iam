@@ -12,5 +12,5 @@ type AnalyticStoreInterface interface {
 
 const (
 	// AnalyticsKeyName defines the key name in redis which used to analytics.
-	AnalyticsKeyName string = "iam-system"
+	AnalyticsKeyName string = "iam-system-analytics"
 )

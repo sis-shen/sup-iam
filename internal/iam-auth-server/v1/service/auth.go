@@ -22,10 +22,11 @@ type AuthCaseInterface interface {
 }
 
 type AuthCase struct {
-	keys         keys.KeysInterface
-	enforcerPool *sync.Pool
-	analytics    *analytics.Analytics
-	cache        *cache.Cache
+	keys          keys.KeysInterface
+	enforcerPool  *sync.Pool
+	analytics     *analytics.Analytics
+	cache         *cache.Cache
+	enforcerCache *EnforcerCache
 }
 
 func NewAuthCase(ch *cache.Cache, keys keys.KeysInterface, analytics *analytics.Analytics) *AuthCase {
@@ -44,10 +45,11 @@ func NewAuthCase(ch *cache.Cache, keys keys.KeysInterface, analytics *analytics.
 		},
 	}
 	return &AuthCase{
-		cache:        ch,
-		keys:         keys,
-		enforcerPool: pool,
-		analytics:    analytics,
+		cache:         ch,
+		keys:          keys,
+		enforcerPool:  pool,
+		analytics:     analytics,
+		enforcerCache: NewEnforcerCache(time.Second*5, pool),
 	}
 }
 
@@ -84,53 +86,54 @@ func (ac *AuthCase) Authorize(secretID string, username string, path string, met
 		return false, nil, err
 	}
 	matchedPolies := make([]string, 0)
-	for _, policy := range policies {
-		ok, err := func() (bool, error) {
-			e := ac.enforcerPool.Get().(*casbin.Enforcer)
-			defer ac.enforcerPool.Put(e)
-			e.ClearPolicy()
-			defer e.ClearPolicy()
 
+	e, ok := ac.enforcerCache.Get(secretID)
+	if !ok {
+		e = ac.enforcerPool.Get().(*casbin.Enforcer)
+		e.ClearPolicy()
+		defer e.ClearPolicy()
+		var allDecodes [][]string
+
+		for _, policy := range policies {
 			var decodes [][]string
+
 			err := json.Unmarshal([]byte(policy.DSL), &decodes)
 			if err != nil {
-				return false, err
+				return false, nil, err
 			}
-			ok, err := e.AddPolicies(decodes)
-			if err != nil {
-				return false, err
-			}
+			allDecodes = append(allDecodes, decodes...)
 
+			ok, err := e.AddPolicies(allDecodes)
+
+			if err != nil {
+				return false, nil, err
+			}
 			if !ok {
-				return false, errors.New("failed to add policy")
+				return false, nil, errors.New("failed to add policy")
 			}
 
-			ok, err = e.Enforce(username, path, method)
-			if err != nil {
-				return false, err
-			}
-			if ok {
-				matchedPolies = append(matchedPolies, policy.ID)
-				return true, nil
-			}
-			return false, nil
-		}()
-		if err != nil {
-			record.Timestamp = time.Now()
-			record.Effect = "deny"
-			record.Reason = fmt.Sprintf("internal error : %v", err)
-			record.LatencyMs = time.Since(startTime).Milliseconds()
-			_ = ac.analytics.RecordHit(record)
-			return false, nil, err
 		}
-		if ok {
-			record.Timestamp = time.Now()
-			record.Effect = "allow"
-			record.Reason = fmt.Sprintf("matched policies : %v", matchedPolies)
-			record.LatencyMs = time.Since(startTime).Milliseconds()
-			_ = ac.analytics.RecordHit(record)
-			return true, matchedPolies, nil
-		}
+
+		ac.enforcerCache.Set(secretID, e)
+	}
+
+	ok, err = e.Enforce(username, path, method)
+
+	if err != nil {
+		record.Timestamp = time.Now()
+		record.Effect = "deny"
+		record.Reason = fmt.Sprintf("internal error : %v", err)
+		record.LatencyMs = time.Since(startTime).Milliseconds()
+		_ = ac.analytics.RecordHit(record)
+		return false, nil, err
+	}
+	if ok {
+		record.Timestamp = time.Now()
+		record.Effect = "allow"
+		record.Reason = fmt.Sprintf("matched policies : %v", matchedPolies)
+		record.LatencyMs = time.Since(startTime).Milliseconds()
+		_ = ac.analytics.RecordHit(record)
+		return true, matchedPolies, nil
 	}
 
 	record.Timestamp = time.Now()
