@@ -59,3 +59,19 @@ docker-checkversion: ## 检查 Docker 镜像版本
 clean: ## 清理
 	cd $(ROOT_PATH) && \
 	rm -rf bin/
+
+.PHONY: helm-lint
+helm-lint:
+	@cd $(ROOT_PATH) && helm template test-release ./deploy/helm/iam/iam-api-server | kubectl apply --dry-run=server -f -
+
+.PHONY: helm-install
+helm-install:
+	@cd $(ROOT_PATH) && helm install iam-api-server ./deploy/helm/iam/iam-api-server -n iam
+
+.PHONY: helm-uninstall
+helm-uninstall:
+	@helm uninstall -n iam iam-api-server
+
+.PHONY: helm-upgrade
+helm-upgrade:
+	@cd $(ROOT_PATH) && helm upgrade iam-api-server ./deploy/helm/iam/iam-api-server -n iam

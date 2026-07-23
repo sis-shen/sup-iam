@@ -4,7 +4,7 @@ global:
   storageClass: "local-path-retain"
 
 image:
-  registry: docker.xuanyuan.run
+  registry: 2sxun1s2h5v8jbsy2r.xuanyuan.run
   repository: bitnamilegacy/mongodb
   tag: "8.0.13-debian-12-r0"
 

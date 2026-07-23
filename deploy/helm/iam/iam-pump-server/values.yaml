@@ -17,9 +17,9 @@ fullnameOverride: ""
 serviceType: NodePort
 
 autoscaling:
-  enabled: false
+  enabled: true
   minReplicas: 1
-  maxReplicas: 100
+  maxReplicas: 3
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
@@ -126,7 +126,7 @@ authzServer:
       memory: "256Mi"
     limits:
       cpu: "2048m"
-      memory: "512Mi"
+      memory: "1024Mi"
   configFileName: iam-auth-config
   configMapName: iam-config
 

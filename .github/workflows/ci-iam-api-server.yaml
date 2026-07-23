@@ -1,0 +1,96 @@
+name: CI_IAM_API_Server
+
+# 触发条件：当代码被推送到 main 分支时，或针对 main 分支发起 Pull Request 时
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'cmd/iam-api-server/**'
+      - 'internal/iam-api-server/**'
+      - 'internal/pkg/**'
+      - 'go.mod'
+      - 'go.sum'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'cmd/iam-api-server/**'
+      - 'internal/iam-api-server/**'
+      - 'internal/pkg/**'
+      - 'go.mod'
+      - 'go.sum'
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25'
+
+      - name: Run Go tests
+        run: |
+          make test
+          go tool cover -func=coverage.out
+
+      - name: Upload test coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-coverage
+          path: coverage.out
+
+      - name: Build iam-api-server Docker image
+        run: |
+          echo "::group::Build iam-api-server Docker image"
+          make docker-build-iam-api-server
+          echo "::endgroup::"
+
+      - name: Test iam-api-server Docker image
+        run: |
+          echo "::group::Check iam-api-server Docker image version"
+          make docker-checkversion-iam-api-server
+          echo "::endgroup::"
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push iam-api-server Docker image
+        run: |
+          echo "::group::Push iam-api-server Docker image"
+          make docker-push-iam-api-server
+          echo "::endgroup::"
+
+      - name: Deploy via CD
+        run: |
+          echo "::group::Deploy iam-api-server via Helm"
+          sshpass -p "${{ secrets.SSH_PASSWORD }}" ssh \
+            -o StrictHostKeyChecking=no \
+            -o UserKnownHostsFile=/dev/null \
+            -p ${{ secrets.SSH_PORT }} \
+            ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+            cd ${{ secrets.SSH_LOCAL_REPO_PATH }}
+            git pull
+            helm upgrade iam-dev ./deploy/helm/iam -n iam
+          EOF
+          echo "::endgroup::"
+
+      - name: Summary
+        run: |
+          echo "========================================"
+          echo "  CI_IAM_API_Server completed"
+          echo "  Image: ghcr.io/sis-shen/iam-api-server:${{ github.sha }}"
+          echo "  Event: ${{ github.event_name }}"
+          echo "  Branch: ${{ github.ref_name }}"
+          echo "  Commit: ${{ github.sha }}"
+          echo "========================================"

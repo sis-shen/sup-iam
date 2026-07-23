@@ -9,7 +9,7 @@ server:
   port: 8080
   # 运行模式: debug/release/test
   # debug模式会输出详细日志，release模式会优化性能
-  mode: "debug"
+  mode: "release"
   # 健康检查路径
   health_path: "/healthz"
   # 健康检查地址
@@ -70,7 +70,7 @@ redis:
 # ========== 日志配置 ==========
 log:
   # 日志级别: debug/info/warn/error/panic/fatal
-  level: "debug"
+  level: "error"
   # 日志输出格式: console/json
   format: "console"
   # 日志输出路径
@@ -94,17 +94,17 @@ analytics:
   # 是否启用审计日志
   enabled: true
   # 工作池大小
-  pool_size: 10
+  pool_size: 20
   # 日志记录缓冲区大小（条数）
-  record_buffer_size: 1024
+  record_buffer_size: 1024000
   # 日志刷新间隔
   flush_interval: 5s
   # 日志过期时间
   storage_expiration: 24h
   # 是否详省略细记录
-  enable_detail_recording: true
+  enable_detail_recording: false
   # RedisKey
-  analytics_key_name: "analytics"
+  analytics_key_name: "iam-system-analytics"
 
 cache:
   # 访问平率计数器数量

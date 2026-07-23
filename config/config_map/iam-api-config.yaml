@@ -9,7 +9,7 @@ server:
   port: 8080
   # 运行模式: debug/release/test
   # debug模式会输出详细日志，release模式会优化性能
-  mode: "debug"
+  mode: "release"
   # 健康检查路径
   health_path: "/healthz"
   # 健康检查地址
@@ -126,7 +126,7 @@ grpc:
 # ========== 日志配置 ==========
 log:
   # 日志级别: debug/info/warn/error/panic/fatal
-  level: "info"
+  level: "error"
   # 日志输出格式: console/json
   format: "console"
   # 日志输出路径

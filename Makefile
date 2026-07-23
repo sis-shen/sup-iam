@@ -8,7 +8,7 @@ GO_REQUIRED_MAJOR ?= 1
 GO_REQUIRED_MINOR ?= 25  # 要求 Go 1.25+
 
 # 服务列表（按依赖顺序，可选）
-SERVICES = iam-api-server iam-auth-server iam-pump LVS
+SERVICES = iam-api-server iam-auth-server iam-pump
 
 # ========== 版本检查函数 ==========
 define check-go-version
@@ -62,6 +62,19 @@ docker-push: $(foreach s,$(SERVICES),docker-push-$(s)) ## 推送所有镜像
 .PHONY: clean
 clean: $(foreach s,$(SERVICES),clean-$(s)) ## 清理所有
 
+# ======== k8s iam ========
+.PHONY: helm-iam-lint
+helm-iam-lint: $(foreach s,$(SERVICES),helm-lint-$(s))
+
+.PHONY: helm-iam-install
+helm-iam-install: $(foreach s,$(SERVICES),helm-install-$(s))
+
+.PHONY: helm-iam-uninstall
+helm-iam-uninstall: $(foreach s,$(SERVICES),helm-uninstall-$(s))
+
+.PHONY: helm-iam-upgrade
+helm-iam-upgrade: $(foreach s,$(SERVICES),helm-uninstall-$(s))
+
 # ========== 单个服务命令 ==========
 # 使用模式规则
 build-%:
@@ -83,7 +96,17 @@ docker-push-%:
 clean-%:
 	@$(MAKE) -C cmd/$* clean
 
+helm-lint-%:
+	@$(MAKE) -C cmd/$* helm-lint
 
+helm-install-%:
+	@$(MAKE) -C cmd/$* helm-install
+
+helm-uninstall-%:
+	@$(MAKE) -C cmd/$* helm-uninstall
+
+helm-upgrade-%:
+	@$(MAKE) -C cmd/$* helm-upgrade
 
 # ========== 全局命令 ==========
 .PHONY: tidy
@@ -148,21 +171,7 @@ kube-secret-create: ## 生成 Secret 文件
 	@kubectl -n iam create secret generic iam-auth-secret --from-env-file=config/secret/iam-auth-env.env
 	@kubectl -n iam create secret generic iam-pump-secret --from-env-file=config/secret/iam-pump-env.env
 
-# ======== k8s iam ========
-.PHONY: helm-iam-lint
-helm-iam-lint: ## 检查 IAM Helm Chart 语法
-	@echo "检查 IAM Helm Chart 语法..."
-	@helm template test-release ./deploy/helm/iam | kubectl apply --dry-run=server -f -
 
-.PHONY: helm-iam-install
-helm-iam-install: ## 安装 IAM Helm Chart
-	@echo "安装 IAM Helm Chart..."
-	@helm install iam-dev ./deploy/helm/iam -n iam
-
-.PHONY: helm-iam-upgrade
-helm-iam-upgrade: ## 升级 IAM Helm Chart
-	@echo "升级 IAM Helm Chart..."
-	@helm upgrade iam-dev ./deploy/helm/iam -n iam
 
 # ======== k8s mysql ========
 .PHONY: helm-mysql-cm

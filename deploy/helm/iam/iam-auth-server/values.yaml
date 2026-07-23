@@ -1,0 +1,77 @@
+# Default values for iam.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+
+# image:
+#   repository: nginx
+#   pullPolicy: IfNotPresent
+#   # Overrides the image tag whose default is the chart appVersion.
+#   tag: ""
+
+imagePullSecrets:
+  - name: ghcr-secret
+nameOverride: ""
+fullnameOverride: ""
+
+serviceType: NodePort
+
+autoscaling:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+authzServer:
+  name: iam-auth-server
+  secretName: iam-auth-secret
+  image:
+    repository: ghcr.io/sis-shen/iam-auth-server
+    tag: "latest"
+    pullPolicy: Always
+  containerPorts:
+    - name: http
+      containerPort: 8080
+    - name: healthz
+      containerPort: 7070
+  healthz:
+    port: 7070
+  service:
+    http:
+      port: 8080
+      targetPort: 8080 # Pod对外暴露的端口
+      nodePort: 30081 # NodePort端口
+    https:
+      port: 8443
+      targetPort: 8443
+    healthz:
+      port: 7070
+      targetPort: 7070
+      nodePort: 30070
+  livenessProbe:
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+  readinessProbe:
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+    successThreshold: 1
+  startupProbe:
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
+  resources:
+    requests:
+      cpu: "300m"
+      memory: "256Mi"
+    limits:
+      cpu: "2048m"
+      memory: "1024Mi"
+  configFileName: iam-auth-config
+  configMapName: iam-config
