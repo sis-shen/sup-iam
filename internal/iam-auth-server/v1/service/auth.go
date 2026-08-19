@@ -44,13 +44,16 @@ func NewAuthCase(ch *cache.Cache, keys keys.KeysInterface, analytics *analytics.
 			return e
 		},
 	}
-	return &AuthCase{
+	ac := &AuthCase{
 		cache:         ch,
 		keys:          keys,
 		enforcerPool:  pool,
 		analytics:     analytics,
 		enforcerCache: NewEnforcerCache(time.Second*5, pool),
 	}
+	// 本地缓存收到更新信号完成重载后，清空 enforcer 缓存，保持与最新策略一致
+	ch.RegisterReloadHandler(ac.enforcerCache.Clear)
+	return ac
 }
 
 var _ AuthCaseInterface = (*AuthCase)(nil)

@@ -290,6 +290,52 @@ func TestAuthorize_InvalidPolicyJSON(t *testing.T) {
 	require.Nil(t, matched)
 }
 
+func TestAuthorize_ReloadClearsEnforcerCache(t *testing.T) {
+	// 初始策略：允许访问 /api/resource
+	setTestPolicies([][]*cachedmodel.CachedPolicy{
+		{
+			{
+				ID:       "reload-1",
+				SecretID: "reload-secret",
+				Username: "alice",
+				DSL:      `[["alice", "/api/resource", "GET"]]`,
+			},
+		},
+	})
+
+	ac := newTestAuthCase()
+
+	// 首次调用：命中并缓存 enforcer
+	ok, _, err := ac.Authorize("reload-secret", "alice", "/api/resource", "GET")
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	// 确认 enforcer 已缓存
+	_, cached := ac.enforcerCache.Get("reload-secret")
+	require.True(t, cached)
+
+	// 本地缓存收到更新信号并重载：策略改为只允许 /api/other
+	setTestPolicies([][]*cachedmodel.CachedPolicy{
+		{
+			{
+				ID:       "reload-2",
+				SecretID: "reload-secret",
+				Username: "alice",
+				DSL:      `[["alice", "/api/other", "GET"]]`,
+			},
+		},
+	})
+
+	// 重载后 enforcer 缓存应被清空，避免继续使用旧策略
+	_, cached = ac.enforcerCache.Get("reload-secret")
+	require.False(t, cached, "本地缓存重载后 enforcer 缓存应被清空")
+
+	// 重新鉴权应使用新策略（拒绝访问 /api/resource）
+	ok, _, err = ac.Authorize("reload-secret", "alice", "/api/resource", "GET")
+	require.NoError(t, err)
+	require.False(t, ok)
+}
+
 func TestAuthorize_NoPolicies(t *testing.T) {
 	// 空策略组会被 ReloadPolicies 跳过，缓存中无对应 key
 	setTestPolicies(nil)

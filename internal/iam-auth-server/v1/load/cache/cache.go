@@ -12,10 +12,12 @@ import (
 
 // 轻读重写用atomic
 type Cache struct {
-	cli         rpc.RpcClient
-	secrets     atomic.Value
-	policies    atomic.Value
-	cacheConfig *ristretto.Config
+	cli            rpc.RpcClient
+	secrets        atomic.Value
+	policies       atomic.Value
+	cacheConfig    *ristretto.Config
+	handlersMtx    sync.RWMutex
+	reloadHandlers []func()
 }
 
 var (
@@ -93,6 +95,7 @@ func (c *Cache) ReloadSecrets() error {
 	secretCache.Wait()
 	c.secrets.Store(secretCache)
 	//旧资源交给gc回收
+	c.notifyReloadHandlers()
 	return nil
 }
 
@@ -116,6 +119,7 @@ func (c *Cache) ReloadPolicies() error {
 	policyCache.Wait()
 
 	c.policies.Store(policyCache)
+	c.notifyReloadHandlers()
 	return nil
 }
 
@@ -127,4 +131,27 @@ func (c *Cache) Reload() error {
 		return err
 	}
 	return nil
+}
+
+// RegisterReloadHandler 注册本地缓存重载成功后的回调。
+// 本地缓存收到更新信号并完成重载后触发，供上层（如 service 的 enforcer 缓存）同步清理自身缓存，
+// 保持与最新数据一致。重载失败时不会触发。
+func (c *Cache) RegisterReloadHandler(fn func()) {
+	c.handlersMtx.Lock()
+	defer c.handlersMtx.Unlock()
+	c.reloadHandlers = append(c.reloadHandlers, fn)
+}
+
+// notifyReloadHandlers 通知所有已注册的重载回调。
+// 先复制快照再执行，避免在持锁状态下调用回调，防止回调内注册新回调导致死锁。
+func (c *Cache) notifyReloadHandlers() {
+	c.handlersMtx.RLock()
+	handlers := make([]func(), len(c.reloadHandlers))
+	copy(handlers, c.reloadHandlers)
+	c.handlersMtx.RUnlock()
+	for _, fn := range handlers {
+		if fn != nil {
+			fn()
+		}
+	}
 }
