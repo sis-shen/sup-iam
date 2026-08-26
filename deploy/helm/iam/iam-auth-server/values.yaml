@@ -31,24 +31,33 @@ authzServer:
     tag: "latest"
     pullPolicy: Always
   containerPorts:
+    - name: https
+      containerPort: 8443
     - name: http
       containerPort: 8080
     - name: healthz
       containerPort: 7070
   healthz:
     port: 7070
+  # 证书通过 K8s Secret 挂载（task.md [D8]），cert/key 文件名须与配置 server.tls.cert_file/key_file 一致
+  tls:
+    secretName: iam-tls-secret
+    mountPath: /etc/iam/tls
+    certFile: tls.crt
+    keyFile: tls.key
   service:
-    http:
-      port: 8080
-      targetPort: 8080 # Pod对外暴露的端口
-      nodePort: 30081 # NodePort端口
+    # 对外只暴露 HTTPS 8443（task.md [D10]），HTTP 8080 / healthz 7070 仅集群内（internal ClusterIP）
     https:
       port: 8443
       targetPort: 8443
-    healthz:
-      port: 7070
-      targetPort: 7070
-      nodePort: 30070
+      nodePort: 30443 # NodePort端口
+    internal:
+      - name: http
+        port: 8080
+        targetPort: 8080
+      - name: healthz
+        port: 7070
+        targetPort: 7070
   livenessProbe:
     periodSeconds: 10
     timeoutSeconds: 5

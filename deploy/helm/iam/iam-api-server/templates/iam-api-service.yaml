@@ -8,13 +8,7 @@ spec:
   ports:
   - name: https
     protocol: TCP
-    {{- toYaml .Values.apiServer.service.https| nindent 4 }}
-  - name: http
-    protocol: TCP
-    {{- toYaml .Values.apiServer.service.http| nindent 4 }}
-  - name: rpc
-    protocol: TCP
-    {{- toYaml .Values.apiServer.service.rpc| nindent 4 }}
+    {{- toYaml .Values.apiServer.service.https | nindent 4 }}
   selector:
     app: {{ .Values.apiServer.name }}
   sessionAffinity: None

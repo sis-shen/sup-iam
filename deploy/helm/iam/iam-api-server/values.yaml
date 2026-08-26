@@ -31,6 +31,8 @@ apiServer:
     tag: "latest"
     pullPolicy: Always
   containerPorts:
+    - name: https
+      containerPort: 8443
     - name: http
       containerPort: 8080
     - name: rpc
@@ -39,17 +41,28 @@ apiServer:
       containerPort: 7070
   healthz:
     port: 7070
+  # 证书通过 K8s Secret 挂载（task.md [D8]，与 auth-server 共用同一 Secret）
+  tls:
+    secretName: iam-tls-secret
+    mountPath: /etc/iam/tls
+    certFile: tls.crt
+    keyFile: tls.key
   service:
-    http:
-      port: 8080
-      targetPort: 8080 # Pod对外暴露的端口
-      nodePort: 30080 # NodePort端口
+    # 对外只暴露 HTTPS 8443（task.md [D10]），HTTP 8080 / rpc 8081 / healthz 7070 仅集群内（internal ClusterIP）
     https:
       port: 8443
       targetPort: 8443
-    rpc:
-      port: 8081
-      targetPort: 8081
+      nodePort: 30444 # NodePort端口
+    internal:
+      - name: http
+        port: 8080
+        targetPort: 8080
+      - name: rpc
+        port: 8081
+        targetPort: 8081
+      - name: healthz
+        port: 7070
+        targetPort: 7070
   livenessProbe:
     periodSeconds: 10
     timeoutSeconds: 5

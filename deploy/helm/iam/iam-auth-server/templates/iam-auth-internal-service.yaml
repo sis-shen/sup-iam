@@ -1,0 +1,20 @@
+# 集群内 Service：HTTP 8080 / healthz 7070 不对外暴露（task.md [D10]），
+# 供平滑迁移期集群内调试与探活使用，仅 ClusterIP。
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: {{ .Values.authzServer.name }}
+  name: {{ .Values.authzServer.name }}-internal
+spec:
+  ports:
+  {{- range .Values.authzServer.service.internal }}
+  - name: {{ .name }}
+    protocol: TCP
+    port: {{ .port }}
+    targetPort: {{ .targetPort }}
+  {{- end }}
+  selector:
+    app: {{ .Values.authzServer.name }}
+  sessionAffinity: None
+  type: ClusterIP

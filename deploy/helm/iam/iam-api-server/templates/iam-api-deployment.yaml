@@ -86,6 +86,9 @@ spec:
           name: config-volume
           readOnly: true
           subPath: {{ .Values.apiServer.configFileName }}.yaml
+        - mountPath: {{ .Values.apiServer.tls.mountPath }}
+          name: tls-volume
+          readOnly: true
       dnsPolicy: ClusterFirst
       restartPolicy: Always
       schedulerName: default-scheduler
@@ -98,6 +101,10 @@ spec:
             path: {{ .Values.apiServer.configFileName }}.yaml
           name: {{ .Values.apiServer.configMapName }}
         name: config-volume
+      - name: tls-volume
+        secret:
+          secretName: {{ .Values.apiServer.tls.secretName }}
+          defaultMode: 420
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
