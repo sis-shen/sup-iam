@@ -31,6 +31,15 @@ type ServerConfig struct {
 	RedisLogKeyPrefix string        `mapstructure:"redis_key_prefix"`
 	SinkLevel         string        `mapstructure:"sink_level"`
 	LoadCacheTTL      time.Duration `mapstructure:"load_cache_ttl"`
+	TLS               TLSConfig     `mapstructure:"tls"`
+}
+
+// TLSConfig 定义 auth-server 自带 HTTPS 服务的 TLS 配置。
+// enabled=false 时行为与旧版一致（仅监听 8080 纯 HTTP）。
+type TLSConfig struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	CertFile string `mapstructure:"cert_file"`
+	KeyFile  string `mapstructure:"key_file"`
 }
 type GrpcConfig struct {
 	Host                string `mapstructure:"host"`
@@ -53,6 +62,9 @@ func NewConfig() *Config {
 			EnableRedisSink:   false,
 			RedisLogKeyPrefix: "iam-auth",
 			SinkLevel:         "info",
+			TLS: TLSConfig{
+				Enabled: false,
+			},
 		},
 		Grpc: GrpcConfig{
 			Host:                "0.0.0.0",

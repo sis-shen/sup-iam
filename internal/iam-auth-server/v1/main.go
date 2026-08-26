@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"google.golang.org/grpc/backoff"
 	"time"
@@ -18,6 +19,7 @@ import (
 	storeredis "github.com/sis-shen/sup-iam/internal/iam-auth-server/v1/storage/redis"
 	"github.com/sis-shen/sup-iam/internal/pkg/keys"
 	genericapiserver "github.com/sis-shen/sup-iam/internal/pkg/server"
+	pkgtls "github.com/sis-shen/sup-iam/internal/pkg/tls"
 	"google.golang.org/grpc/encoding/gzip"
 
 	"net/http"
@@ -44,6 +46,7 @@ var (
 
 type ShutdownResources struct {
 	httpServer       *http.Server
+	httpsServer      *http.Server
 	grpcConn         *grpc.ClientConn
 	etcdClient       *etcdclient.Client
 	analyticsManager *analytics.Analytics
@@ -164,6 +167,17 @@ func main() {
 
 	//======== 5.启动HTTPServer
 	go genericapiserver.ServeHealthCheck(conf.Server.HealthPath, conf.Server.HealthAddr)
+
+	// 预加载 TLS 配置，失败则直接中止启动（与 redis/grpc 等组件启动失败的处理方式一致）
+	var tlsConfig *tls.Config
+	if conf.Server.TLS.Enabled {
+		tlsConfig, err = pkgtls.NewServerTLSConfig(conf.Server.TLS.CertFile, conf.Server.TLS.KeyFile)
+		if err != nil {
+			logger.Errorf("fail to create tls config: %v", err)
+			return
+		}
+	}
+
 	address := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
 	httpServer := &http.Server{
 		Addr:         address,
@@ -172,15 +186,37 @@ func main() {
 		WriteTimeout: conf.Server.WriteTimeout,
 		IdleTimeout:  conf.Server.IdleTimeout,
 	}
+	shutdownRes.httpServer = httpServer
 
 	g.Go(func() error {
 		logger.Infof("starting http server on %s", address)
-		shutdownRes.httpServer = httpServer
 		if err := httpServer.ListenAndServe(); err != nil {
 			return fmt.Errorf("fail to start http server: %v", err)
 		}
 		return nil
 	})
+
+	// 当 server.tls.enabled=true 时，8443 HTTPS 与 8080 HTTP 同时监听
+	if conf.Server.TLS.Enabled {
+		tlsAddress := fmt.Sprintf("%s:%d", conf.Server.Host, 8443)
+		httpsServer := &http.Server{
+			Addr:         tlsAddress,
+			Handler:      router,
+			TLSConfig:    tlsConfig,
+			ReadTimeout:  conf.Server.ReadTimeout,
+			WriteTimeout: conf.Server.WriteTimeout,
+			IdleTimeout:  conf.Server.IdleTimeout,
+		}
+		shutdownRes.httpsServer = httpsServer
+
+		g.Go(func() error {
+			logger.Infof("starting https server on %s", tlsAddress)
+			if err := httpsServer.ListenAndServeTLS("", ""); err != nil {
+				return fmt.Errorf("fail to start https server: %v", err)
+			}
+			return nil
+		})
+	}
 
 	// ====== 6.监听系统退出信号
 	g.Go(func() error {
@@ -215,6 +251,14 @@ func main() {
 				logger.Errorf("fail to shutdown http server: %v", err)
 			} else {
 				logger.Infof("http server shutdown successfully")
+			}
+		}
+
+		if shutdownRes.httpsServer != nil {
+			if err := shutdownRes.httpsServer.Shutdown(shutdownCtx); err != nil {
+				logger.Errorf("fail to shutdown https server: %v", err)
+			} else {
+				logger.Infof("https server shutdown successfully")
 			}
 		}
 

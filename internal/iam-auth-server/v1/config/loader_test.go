@@ -24,6 +24,10 @@ func TestNewConfig(t *testing.T) {
 	assert.Equal(t, 8080, cfg.Server.Port)
 	assert.Equal(t, "debug", cfg.Server.Mode)
 	assert.Equal(t, 8080, cfg.Grpc.Port)
+	// 默认 TLS 关闭，向后兼容
+	assert.False(t, cfg.Server.TLS.Enabled)
+	assert.Empty(t, cfg.Server.TLS.CertFile)
+	assert.Empty(t, cfg.Server.TLS.KeyFile)
 }
 
 func TestLoadConfigFile_Success(t *testing.T) {
@@ -94,6 +98,67 @@ log:
 	assert.Equal(t, 7777, cfg.Server.Port)
 	assert.Equal(t, "test", cfg.Server.Mode)
 	assert.Equal(t, 9999, cfg.Grpc.Port)
+}
+
+func TestLoad_ServerTLSEnabled(t *testing.T) {
+	configDir := t.TempDir()
+	configPath := filepath.Join(configDir, "config.yaml")
+	writeTestConfig(t, configPath, `
+server:
+  port: 8080
+  tls:
+    enabled: true
+    cert_file: "/etc/iam/tls/server.crt"
+    key_file: "/etc/iam/tls/server.key"
+grpc:
+  port: 9090
+`)
+
+	cfg, err := Load(configPath)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	assert.True(t, cfg.Server.TLS.Enabled)
+	assert.Equal(t, "/etc/iam/tls/server.crt", cfg.Server.TLS.CertFile)
+	assert.Equal(t, "/etc/iam/tls/server.key", cfg.Server.TLS.KeyFile)
+}
+
+func TestLoad_ServerTLSDisabled(t *testing.T) {
+	configDir := t.TempDir()
+	configPath := filepath.Join(configDir, "config.yaml")
+	writeTestConfig(t, configPath, `
+server:
+  port: 8080
+  tls:
+    enabled: false
+grpc:
+  port: 9090
+`)
+
+	cfg, err := Load(configPath)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	assert.False(t, cfg.Server.TLS.Enabled)
+	assert.Empty(t, cfg.Server.TLS.CertFile)
+	assert.Empty(t, cfg.Server.TLS.KeyFile)
+}
+
+func TestLoad_ServerTLSDefaultDisabled(t *testing.T) {
+	// 未配置 server.tls 段时，默认 enabled=false（向后兼容）
+	configDir := t.TempDir()
+	configPath := filepath.Join(configDir, "config.yaml")
+	writeTestConfig(t, configPath, `
+server:
+  port: 8080
+grpc:
+  port: 9090
+`)
+
+	cfg, err := Load(configPath)
+	require.NoError(t, err)
+	require.NotNil(t, cfg)
+	assert.False(t, cfg.Server.TLS.Enabled)
+	assert.Empty(t, cfg.Server.TLS.CertFile)
+	assert.Empty(t, cfg.Server.TLS.KeyFile)
 }
 
 func TestLoad_InvalidPort(t *testing.T) {
