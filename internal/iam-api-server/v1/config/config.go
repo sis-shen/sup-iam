@@ -30,6 +30,15 @@ type ServerConfig struct {
 	EnableRedisSink   bool          `mapstructure:"enable_redis_sink"`
 	RedisLogKeyPrefix string        `mapstructure:"redis_key_prefix"`
 	SinkLevel         string        `mapstructure:"sink_level"`
+	TLS               TLSConfig     `mapstructure:"tls"`
+}
+
+// TLSConfig 定义 api-server HTTP API 的 HTTPS 服务配置。
+// enabled=false 时行为与旧版一致（仅监听纯 HTTP）。
+type TLSConfig struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	CertFile string `mapstructure:"cert_file"`
+	KeyFile  string `mapstructure:"key_file"`
 }
 
 type JWTConfig struct {

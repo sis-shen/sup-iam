@@ -115,6 +115,9 @@ func NewConfig() *AppConfig {
 			EnableRedisSink:   true,
 			RedisLogKeyPrefix: "iam-log",
 			SinkLevel:         "info",
+			TLS: TLSConfig{
+				Enabled: false,
+			},
 		},
 		JWT: &JWTConfig{
 			SecretKey:              "yourSecretKey",

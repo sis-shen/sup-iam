@@ -32,6 +32,7 @@ import (
 	"github.com/sis-shen/sup-iam/internal/pkg/middleware"
 	"github.com/sis-shen/sup-iam/internal/pkg/proto/rpc/v2"
 	genericapiserver "github.com/sis-shen/sup-iam/internal/pkg/server"
+	pkgtls "github.com/sis-shen/sup-iam/internal/pkg/tls"
 	"github.com/spf13/pflag"
 	etcdclient "go.etcd.io/etcd/client/v3"
 	"go.etcd.io/etcd/client/v3/naming/endpoints"
@@ -52,6 +53,7 @@ var (
 // 定义一个结构体，用于存放需要优雅关闭的资源
 type shutdownResources struct {
 	httpServer    *http.Server
+	httpsServer   *http.Server
 	grpcServer    *grpc.Server
 	etcdLeaseID   etcdclient.LeaseID
 	etcdCli       *etcdclient.Client
@@ -128,6 +130,35 @@ func main() {
 
 	//======== 5.启动HTTPServer
 	go genericapiserver.ServeHealthCheck(conf.Server.HealthPath, conf.Server.HealthAddr)
+
+	// 预加载 TLS 配置，失败则直接中止启动（与 redis/grpc 等组件启动失败的处理方式一致）
+	if conf.Server.TLS.Enabled {
+		tlsConfig, err := pkgtls.NewServerTLSConfig(conf.Server.TLS.CertFile, conf.Server.TLS.KeyFile)
+		if err != nil {
+			logger.Errorf("fail to create tls config: %v", err)
+			return
+		}
+		// 当 server.tls.enabled=true 时，8443 HTTPS 与 8080 HTTP 同时监听
+		tlsAddress := fmt.Sprintf("%s:%d", conf.Server.Host, 8443)
+		httpsServer := &http.Server{
+			Addr:         tlsAddress,
+			Handler:      router,
+			TLSConfig:    tlsConfig,
+			ReadTimeout:  conf.Server.ReadTimeout,
+			WriteTimeout: conf.Server.WriteTimeout,
+			IdleTimeout:  conf.Server.IdleTimeout,
+		}
+		shutdownRes.httpsServer = httpsServer
+
+		g.Go(func() error {
+			logger.Infof("starting https server on %s", tlsAddress)
+			if err := httpsServer.ListenAndServeTLS("", ""); err != nil {
+				return fmt.Errorf("fail to start https server: %v", err)
+			}
+			return nil
+		})
+	}
+
 	address := fmt.Sprintf("%s:%d", conf.Server.Host, conf.Server.Port)
 	httpServer := &http.Server{
 		Addr:         address,
@@ -136,9 +167,9 @@ func main() {
 		WriteTimeout: conf.Server.WriteTimeout,
 		IdleTimeout:  conf.Server.IdleTimeout,
 	}
+	shutdownRes.httpServer = httpServer
 
 	g.Go(func() error {
-		shutdownRes.httpServer = httpServer
 		logger.Infof("starting http server on %s", address)
 		if err := httpServer.ListenAndServe(); err != nil {
 			return fmt.Errorf("fail to start http server: %v", err)
@@ -200,6 +231,14 @@ func main() {
 
 		if err := shutdownRes.httpServer.Shutdown(shutdownCtx); err != nil {
 			logger.Errorf("fail to shutdown http server: %v", err)
+		}
+
+		if shutdownRes.httpsServer != nil {
+			if err := shutdownRes.httpsServer.Shutdown(shutdownCtx); err != nil {
+				logger.Errorf("fail to shutdown https server: %v", err)
+			} else {
+				logger.Infof("https server shutdown successfully")
+			}
 		}
 
 		//关停grpc
